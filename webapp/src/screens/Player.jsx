@@ -72,7 +72,6 @@ export function Player({ params }) {
             </div>
             <div style={{ fontSize: 14, color: "rgba(255,255,255,.55)", marginTop: 3 }}>
               {t.idLabel} {player.id}
-              {player.contact ? <> · <span className="tg">{player.contact}</span></> : null}
             </div>
           </div>
         </div>
