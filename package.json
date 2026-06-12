@@ -1,0 +1,10 @@
+{
+  "name": "billiard-club",
+  "version": "1.0.0",
+  "private": true,
+  "engines": { "node": ">=22.5" },
+  "scripts": {
+    "build": "cd webapp && npm install && npm run build",
+    "start": "cd server && npm install --omit=dev && node src/index.js"
+  }
+}
