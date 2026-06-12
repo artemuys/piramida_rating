@@ -2,7 +2,7 @@ export const LANGS = [
   { code: "en", label: "English", flag: "🇬🇧" },
   { code: "pl", label: "Polski", flag: "🇵🇱" },
   { code: "uk", label: "Українська", flag: "🇺🇦" },
-  { code: "ru", label: "Русский", flag: "🇷🇺" },
+  { code: "ru", label: "Русский", flag: "🏳️" },
 ];
 
 export const LOCALES = { en: "en-GB", pl: "pl-PL", uk: "uk-UA", ru: "ru-RU" };
@@ -11,7 +11,8 @@ export const T = {
   en: {
     step0: { title: "Welcome", sub: "Let's get acquainted. What's your name?", placeholder: "First and last name", hint: "Up to 40 characters · visible to other players", next: "Continue" },
     step1: { title: "Contact", sub: "How can others reach you to arrange a match?", placeholder: "@username or phone", hint: "Telegram, WhatsApp or number — whatever works", next: "Continue" },
-    step2: { title: "Preferences", sub: "Set your defaults — you can change them later.", disc: "Discipline", pays: "Who pays", finish: "Start playing 🎱" },
+    step2: { title: "Preferences", sub: "Set your defaults — you can change them later.", disc: "Discipline", pays: "Who pays", finish: "Continue" },
+    step3: { title: "Rules", sub: "Please read and accept the app rules.", accept: "I have read and accept the rules", finish: "Start playing 🎱" },
     nav: { home: "Home", favorites: "Favourites", rating: "Club Rating", result: "Log Result", history: "Match History", settings: "Settings", admin: "Administrator", apps: "Requests", searching: "Searching", whoSearching: "Who's searching" },
     back: "Back",
     search: { btn: "Find a match", inSearch: "Searching", discipline: "Discipline", whoPays: "Who pays", start: "Start searching", stop: "Stop searching" },
@@ -85,7 +86,8 @@ export const T = {
   pl: {
     step0: { title: "Witaj", sub: "Poznajmy się. Jak masz na imię?", placeholder: "Imię i nazwisko", hint: "Do 40 znaków · widoczne dla innych graczy", next: "Dalej" },
     step1: { title: "Kontakt", sub: "Jak inni mogą się z tobą skontaktować?", placeholder: "@username lub telefon", hint: "Telegram, WhatsApp lub numer — co wygodniejsze", next: "Dalej" },
-    step2: { title: "Preferencje", sub: "Ustaw domyślne parametry — możesz je zmienić później.", disc: "Dyscyplina", pays: "Kto płaci", finish: "Zacznij grać 🎱" },
+    step2: { title: "Preferencje", sub: "Ustaw domyślne parametry — możesz je zmienić później.", disc: "Dyscyplina", pays: "Kto płaci", finish: "Dalej" },
+    step3: { title: "Zasady", sub: "Przeczytaj i zaakceptuj zasady aplikacji.", accept: "Przeczytałem/am i akceptuję zasady", finish: "Zacznij grać 🎱" },
     nav: { home: "Główna", favorites: "Ulubieni", rating: "Ranking klubu", result: "Dodaj wynik", history: "Historia meczy", settings: "Ustawienia", admin: "Administrator", apps: "Ogłoszenia", searching: "Szukam", whoSearching: "Kto szuka gry" },
     back: "Wróć",
     search: { btn: "Szukaj meczu", inSearch: "Szukam", discipline: "Dyscyplina", whoPays: "Kto płaci", start: "Rozpocznij wyszukiwanie", stop: "Zatrzymaj wyszukiwanie" },
@@ -159,7 +161,8 @@ export const T = {
   uk: {
     step0: { title: "Ласкаво просимо", sub: "Давай познайомимося. Як тебе звати?", placeholder: "Ім'я та прізвище", hint: "До 40 символів · видно іншим гравцям", next: "Продовжити" },
     step1: { title: "Контакт", sub: "Як з тобою зв'язатися для домовленості про матч?", placeholder: "@username або телефон", hint: "Telegram, WhatsApp або номер — як зручніше", next: "Продовжити" },
-    step2: { title: "Налаштування", sub: "Встанови параметри за замовчуванням — їх можна змінити пізніше.", disc: "Дисципліна", pays: "Хто платить", finish: "Почати грати 🎱" },
+    step2: { title: "Налаштування", sub: "Встанови параметри за замовчуванням — їх можна змінити пізніше.", disc: "Дисципліна", pays: "Хто платить", finish: "Продовжити" },
+    step3: { title: "Правила", sub: "Прочитай та прийми правила застосунку.", accept: "Я прочитав/ла та приймаю правила", finish: "Почати грати 🎱" },
     nav: { home: "Головна", favorites: "Обрані", rating: "Рейтинг клубу", result: "Внести результат", history: "Історія матчів", settings: "Налаштування", admin: "Адміністратор", apps: "Заявки", searching: "В пошуку", whoSearching: "Хто в пошуку" },
     back: "Назад",
     search: { btn: "Знайти матч", inSearch: "В пошуку", discipline: "Дисципліна", whoPays: "Хто платить", start: "Розпочати пошук", stop: "Зупинити пошук" },
@@ -233,7 +236,8 @@ export const T = {
   ru: {
     step0: { title: "Добро пожаловать", sub: "Давай познакомимся. Как тебя зовут?", placeholder: "Имя и фамилия", hint: "До 40 символов · будет видно другим игрокам", next: "Продолжить" },
     step1: { title: "Способ связи", sub: "Как с тобой связаться для договорённости о матче?", placeholder: "@username или телефон", hint: "Telegram, WhatsApp или номер — что удобнее", next: "Продолжить" },
-    step2: { title: "Предпочтения", sub: "Настрой параметры по умолчанию — их можно изменить потом.", disc: "Дисциплина", pays: "Кто платит", finish: "Начать играть 🎱" },
+    step2: { title: "Предпочтения", sub: "Настрой параметры по умолчанию — их можно изменить потом.", disc: "Дисциплина", pays: "Кто платит", finish: "Продолжить" },
+    step3: { title: "Правила", sub: "Прочитай и прими правила приложения.", accept: "Я прочитал/а и принимаю правила", finish: "Начать играть 🎱" },
     nav: { home: "Главная", favorites: "Избранные", rating: "Рейтинг клуба", result: "Внести результат", history: "История матчей", settings: "Настройки", admin: "Администратор", apps: "Заявки", searching: "В поиске", whoSearching: "Кто в поиске" },
     back: "Назад",
     search: { btn: "Встать в поиск", inSearch: "В поиске", discipline: "Дисциплина", whoPays: "Кто платит", start: "Встать в поиск", stop: "Выйти из поиска" },

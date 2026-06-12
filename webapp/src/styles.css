@@ -162,10 +162,10 @@ body { color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Disp
 .search-main-btn .chevron { margin-left: auto; font-size: 12px; color: rgba(255,255,255,.3); transition: transform .2s; }
 .search-main-btn.open .chevron { transform: rotate(180deg); }
 .search-expand { background: #1c1c1e; border: 1px solid rgba(255,255,255,.1); border-top: none; border-radius: 0 0 14px 14px; padding: 14px 16px 18px; }
-.search-expand-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-.search-expand-lbl { font-size: 14px; color: rgba(255,255,255,.45); width: 82px; flex-shrink: 0; letter-spacing: -.01em; }
-.search-tog-g { display: flex; flex: 1; background: #2c2c2e; border-radius: 9px; padding: 3px; gap: 2px; }
-.search-tog { flex: 1; padding: 6px 4px; border-radius: 7px; border: none; background: transparent; color: rgba(255,255,255,.4); cursor: pointer; font-size: 13px; font-family: inherit; font-weight: 500; transition: all .12s; white-space: nowrap; }
+.search-expand-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.search-expand-lbl { font-size: 13px; color: rgba(255,255,255,.45); letter-spacing: -.01em; }
+.search-tog-g { display: flex; width: 100%; background: #2c2c2e; border-radius: 9px; padding: 3px; gap: 2px; }
+.search-tog { flex: 1; padding: 6px 4px; border-radius: 7px; border: none; background: transparent; color: rgba(255,255,255,.4); cursor: pointer; font-size: 13px; font-family: inherit; font-weight: 500; transition: all .12s; }
 .search-tog.on { background: #3a3a3c; color: #fff; font-weight: 600; }
 .search-go-btn { width: 100%; padding: 14px; border-radius: 12px; border: none; background: #30D158; color: #000; font-size: 16px; font-weight: 600; cursor: pointer; font-family: inherit; letter-spacing: -.01em; margin-top: 4px; }
 .search-stop-btn { width: 100%; padding: 13px; border-radius: 12px; border: none; background: rgba(255,69,58,.1); color: #FF453A; font-size: 16px; font-weight: 500; cursor: pointer; font-family: inherit; letter-spacing: -.01em; margin-top: 4px; }
