@@ -1,25 +1,17 @@
-# ── build webapp ──────────────────────────────────────────────
-FROM node:24-alpine AS webapp
+FROM node:22-alpine AS webapp-build
 WORKDIR /build/webapp
 COPY webapp/package*.json ./
 RUN npm ci
 COPY webapp/ ./
 RUN npm run build
 
-# ── production server ──────────────────────────────────────────
-FROM node:24-alpine AS server
-WORKDIR /app
-
+FROM node:22-alpine
+WORKDIR /app/server
 COPY server/package*.json ./
 RUN npm ci --omit=dev
-
 COPY server/ ./
-COPY --from=webapp /build/webapp/dist ./webapp/dist
-
+COPY --from=webapp-build /build/webapp/dist /app/webapp/dist
 RUN mkdir -p /data
-
-EXPOSE 3000
-ENV PORT=3000
 ENV DB_PATH=/data/club.db
-
+EXPOSE 3000
 CMD ["node", "src/index.js"]
