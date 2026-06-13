@@ -69,6 +69,10 @@ export default async function matchesRoutes(app) {
         const opp = q(`SELECT * FROM users WHERE id = ?`).get(opponentId);
         if (!opp) throw new ApiError(404, "player_not_found");
         if (opp.checked_in_until <= t) throw new ApiError(409, "opponent_not_checked_in");
+
+        const myDisc  = u.active_discipline   ?? 'pool';
+        const oppDisc = opp.active_discipline ?? 'pool';
+        if (myDisc !== oppDisc) throw new ApiError(409, "discipline_mismatch");
         if (pendingFor(u.id)) throw new ApiError(409, "you_busy");
         if (pendingFor(opp.id)) throw new ApiError(409, "opponent_busy");
 
