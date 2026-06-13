@@ -1,13 +1,17 @@
 import { Component, useEffect, useRef, useState } from "react";
+import confetti from "canvas-confetti";
 import { useApp } from "./store.jsx";
 import { avaColor, initials, winPct, rankOf, RANKS, xpProgress, levelFromXp, xpToReachLevel } from "./util.js";
 
-export function Ava({ id, name, size = 38 }) {
+export function Ava({ id, name, size = 38, ringColor }) {
   const color = avaColor(id);
   return (
     <div
       className="ava"
-      style={{ background: color + "28", color, width: size, height: size, fontSize: size * 0.32 }}
+      style={{
+        background: color + "28", color, width: size, height: size, fontSize: size * 0.32,
+        ...(ringColor ? { boxShadow: `0 0 0 2px ${ringColor}66, 0 0 8px ${ringColor}33` } : {}),
+      }}
     >
       {initials(name)}
     </div>
@@ -273,6 +277,17 @@ export function MatchResultModal({ match, xpBefore, onClose }) {
       </div>
     );
   }
+
+  useEffect(() => {
+    if (type !== "win") return;
+    const colors = ["#FFD700", "#00CC7C", "#3B8EFF", "#FF3D54", "#FFBA08", "#A855F7"];
+    const end = Date.now() + 1800;
+    (function frame() {
+      confetti({ particleCount: 3, angle: 60,  spread: 55, origin: { x: 0 }, colors, disableForReducedMotion: true });
+      confetti({ particleCount: 3, angle: 120, spread: 55, origin: { x: 1 }, colors, disableForReducedMotion: true });
+      if (Date.now() < end) requestAnimationFrame(frame);
+    })();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const mySide = resolved ? (match.iWon ? "win" : "lose") : "neutral";
   const theirSide = resolved ? (match.iWon ? "lose" : "win") : "neutral";

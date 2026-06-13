@@ -272,7 +272,12 @@ function usePullToRefresh(onRefresh) {
 export function Home({ navigate }) {
   const { me, t, lang, refreshMe } = useApp();
   const [rules, setRules] = useState(false);
+  const [lastMatch, setLastMatch] = useState(undefined);
   const ptr = usePullToRefresh(refreshMe);
+
+  useEffect(() => {
+    api.get("/history").then(r => setLastMatch(r.matches?.[0] ?? null)).catch(() => setLastMatch(null));
+  }, []);
 
   return (
     <>
@@ -313,6 +318,18 @@ export function Home({ navigate }) {
 
         <Stats elo={me.elo} place={me.place} matches={me.matchesCount} wins={me.winsCount} t={t} />
         <LevelBar xp={me.xp} style={{ padding: "10px 20px 16px" }} />
+
+        {lastMatch && (
+          <div className="last-match-row">
+            <div className="last-match-dot" style={{ background: lastMatch.iWon ? "#30D158" : "#FF453A" }} />
+            <span className="last-match-label">{t.x.lastMatch || "Последний матч"}:</span>
+            <span className="last-match-result" style={{ color: lastMatch.iWon ? "#30D158" : "#FF453A" }}>
+              {lastMatch.iWon ? t.modal.win : t.modal.lose}
+              {" "}{lastMatch.delta > 0 ? "+" : ""}{lastMatch.delta} {t.elo}
+            </span>
+            <span className="last-match-vs">vs {lastMatch.opponent.name.split(" ")[0]}</span>
+          </div>
+        )}
 
         {!me.isActivated && (
           <div className="alert alert-r">

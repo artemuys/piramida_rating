@@ -51,7 +51,7 @@ export function Rating({ navigate }) {
             <span className="r-pos">
               {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}
             </span>
-            <Ava id={p.id} name={p.name} />
+            <Ava id={p.id} name={p.name} ringColor={rankOf(p.elo).color} />
             <span className="r-name" style={{ minWidth: 0 }}>
               <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {p.name}<Crown role={p.role} />
@@ -125,7 +125,7 @@ export function Favorites({ navigate }) {
     <div className="card">
       {favorites.map((p) => (
         <div className="list-row" key={p.id} onClick={() => navigate("player", { playerId: p.id, title: p.name })}>
-          <Ava id={p.id} name={p.name} />
+          <Ava id={p.id} name={p.name} ringColor={rankOf(p.elo).color} />
           <span className="list-row-label">{p.name}<Crown role={p.role} /></span>
           <span className="list-row-value">{p.elo} {t.elo}</span>
           <span className="list-row-chevron">›</span>

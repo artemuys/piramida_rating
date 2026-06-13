@@ -104,6 +104,8 @@ body {
   width: 100%;
   margin: 0 auto;
 }
+.page-forward { animation: page-in-right 240ms cubic-bezier(.22,1,.36,1); }
+.page-back    { animation: page-in-left  200ms cubic-bezier(.22,1,.36,1); }
 
 /* ── CARDS ────────────────────────────────────────────────── */
 .card {
@@ -196,7 +198,7 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 .list-row:last-child { border-bottom: none; }
-.list-row:active { background: rgba(255,255,255,.035); }
+.list-row:active { background: rgba(255,255,255,.035); transform: scale(.98); }
 .list-row.locked { opacity: .25; pointer-events: none; }
 
 .list-row-icon {
@@ -282,7 +284,7 @@ body {
   transition: background var(--t-fast);
 }
 .row:last-child { border-bottom: none; }
-.row:active { background: rgba(255,255,255,.03); }
+.row:active { background: rgba(255,255,255,.03); transform: scale(.98); }
 .row-info { flex: 1; min-width: 0; }
 .row-name {
   font-weight: 440; font-size: 15.5px; letter-spacing: -.015em;
@@ -319,7 +321,7 @@ body {
   transition: background var(--t-fast);
 }
 .r-row:last-child { border-bottom: none; }
-.r-row:active { background: rgba(255,255,255,.03); }
+.r-row:active { background: rgba(255,255,255,.03); transform: scale(.98); }
 .r-pos {
   width: 28px; color: var(--text-3);
   font-size: 13px; font-variant-numeric: tabular-nums; font-weight: 520;
@@ -455,6 +457,9 @@ body {
   66%  { background-position: 20% 80%; }
   100% { background-position: 0% 0%; }
 }
+
+@keyframes page-in-right { from { transform: translateX(20px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes page-in-left  { from { transform: translateX(-20px); opacity: 0; } to { transform: none; opacity: 1; } }
 
 @keyframes pulse-ring {
   0%   { box-shadow: 0 0 0 0 rgba(0,204,124,.5); }
@@ -1231,3 +1236,14 @@ body {
   border-top-color: var(--blue);
   animation: ptr-spin .7s linear infinite;
 }
+
+/* ── LAST MATCH ROW ──────────────────────────────────────── */
+.last-match-row {
+  display: flex; align-items: center; gap: 7px;
+  padding: 0 18px 14px; font-size: 12px;
+  animation: fade-in .35s ease both;
+}
+.last-match-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.last-match-label { color: rgba(255,255,255,.35); }
+.last-match-result { font-weight: 620; }
+.last-match-vs { margin-left: auto; color: rgba(255,255,255,.22); font-size: 11px; }

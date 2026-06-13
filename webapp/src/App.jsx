@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "./store.jsx";
 import { ErrorBoundary, Spinner, Toasts } from "./components.jsx";
 import { api } from "./api.js";
@@ -65,6 +65,7 @@ function AnnounceBanner() {
 function Shell() {
   const { me, phase, t, refreshMe } = useApp();
   const [nav, setNav] = useState([{ id: "home", params: {} }]);
+  const dirRef = useRef("forward");
 
   const current = nav[nav.length - 1];
   const screen = SCREENS[current.id] || SCREENS.home;
@@ -74,9 +75,11 @@ function Shell() {
     if (!SCREENS[id]) return;
     if (SCREENS[id].adminOnly && me?.role !== "admin") return;
     if (SCREENS[id].superOnly && !me?.isSuper) return;
+    dirRef.current = "forward";
     setNav((prev) => [...prev, { id, params }]);
   }
   function goBack() {
+    dirRef.current = "back";
     setNav((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
   }
 
@@ -141,7 +144,7 @@ function Shell() {
         <div className="topbar-title">{title}</div>
         <div className="topbar-spacer" />
       </div>
-      <div className="page" key={`${current.id}-${current.params.playerId ?? ""}`}>
+      <div className={`page page-${dirRef.current}`} key={`${current.id}-${current.params.playerId ?? ""}`}>
         <Comp navigate={navigate} params={current.params} />
       </div>
     </div>
