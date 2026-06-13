@@ -255,14 +255,19 @@ export default async function adminRoutes(app) {
         }
       }
 
-      // Сброс ELO с частичным сохранением (30% от превышения над 1000)
+      // Сброс ELO с частичным сохранением (30% от превышения над 1000) — обе дисциплины
       const ELO_START = 1000;
       const CARRY = 0.3;
-      const users = q(`SELECT id, elo FROM users`).all();
+      const users = q(`SELECT id, elo, elo_pyramid FROM users`).all();
       for (const u of users) {
         const newElo = Math.round(ELO_START + Math.max(0, u.elo - ELO_START) * CARRY);
-        q(`UPDATE users SET elo = ?, peak_elo = ?, matches_count = 0, wins_count = 0, streak = 0, xp = 0 WHERE id = ?`)
-          .run(newElo, newElo, u.id);
+        const newEloPyr = Math.round(ELO_START + Math.max(0, (u.elo_pyramid ?? 1000) - ELO_START) * CARRY);
+        q(`UPDATE users SET
+            elo = ?, peak_elo = ?, matches_count = 0, wins_count = 0, streak = 0, xp = 0,
+            elo_pyramid = ?, peak_elo_pyramid = ?, matches_count_pyramid = 0, wins_count_pyramid = 0,
+            streak_pyramid = 0, xp_pyramid = 0
+           WHERE id = ?`)
+          .run(newElo, newElo, newEloPyr, newEloPyr, u.id);
       }
 
       audit(req.user.id, null, `season_close:${seasonId}`);
@@ -449,8 +454,12 @@ export default async function adminRoutes(app) {
     requireSuperAdmin(req);
     const target = getTarget(req);
     const ELO_START = 1000;
-    q(`UPDATE users SET elo = ?, peak_elo = ?, matches_count = 0, wins_count = 0, streak = 0, best_streak = 0, xp = 0 WHERE id = ?`)
-      .run(ELO_START, ELO_START, target.id);
+    q(`UPDATE users SET
+        elo = ?, peak_elo = ?, matches_count = 0, wins_count = 0, streak = 0, best_streak = 0, xp = 0,
+        elo_pyramid = ?, peak_elo_pyramid = ?, matches_count_pyramid = 0, wins_count_pyramid = 0,
+        streak_pyramid = 0, best_streak_pyramid = 0, xp_pyramid = 0
+       WHERE id = ?`)
+      .run(ELO_START, ELO_START, ELO_START, ELO_START, target.id);
     audit(req.user.id, target.id, "reset_stats");
     return { ok: true };
   });
@@ -608,10 +617,13 @@ export default async function adminRoutes(app) {
     if (winnerId !== match.initiator_id && winnerId !== match.opponent_id) throw new ApiError(400, "validation");
 
     const loserId = winnerId === match.initiator_id ? match.opponent_id : match.initiator_id;
+    const isPyramid = match.discipline === "pyramid";
     const K = 32;
-    const winner = q(`SELECT elo FROM users WHERE id = ?`).get(winnerId);
-    const loser = q(`SELECT elo FROM users WHERE id = ?`).get(loserId);
-    const expected = 1 / (1 + Math.pow(10, (loser.elo - winner.elo) / 400));
+    const winner = q(`SELECT * FROM users WHERE id = ?`).get(winnerId);
+    const loser  = q(`SELECT * FROM users WHERE id = ?`).get(loserId);
+    const winnerElo = isPyramid ? (winner.elo_pyramid ?? 1000) : winner.elo;
+    const loserElo  = isPyramid ? (loser.elo_pyramid  ?? 1000) : loser.elo;
+    const expected = 1 / (1 + Math.pow(10, (loserElo - winnerElo) / 400));
     const delta = Math.round(K * (1 - expected));
 
     tx(() => {
@@ -619,12 +631,17 @@ export default async function adminRoutes(app) {
          initiator_elo_after = ?, opponent_elo_after = ?, resolved_at = ?
          WHERE id = ?`).run(
         winnerId, delta,
-        match.initiator_id === winnerId ? winner.elo + delta : loser.elo - delta,
-        match.opponent_id === winnerId ? winner.elo + delta : loser.elo - delta,
+        match.initiator_id === winnerId ? winnerElo + delta : loserElo - delta,
+        match.opponent_id === winnerId ? winnerElo + delta : loserElo - delta,
         now(), matchId
       );
-      q(`UPDATE users SET elo = elo + ?, wins_count = wins_count + 1 WHERE id = ?`).run(delta, winnerId);
-      q(`UPDATE users SET elo = elo - ? WHERE id = ?`).run(delta, loserId);
+      if (isPyramid) {
+        q(`UPDATE users SET elo_pyramid = elo_pyramid + ?, wins_count_pyramid = wins_count_pyramid + 1, matches_count_pyramid = matches_count_pyramid + 1 WHERE id = ?`).run(delta, winnerId);
+        q(`UPDATE users SET elo_pyramid = MAX(0, elo_pyramid - ?), matches_count_pyramid = matches_count_pyramid + 1 WHERE id = ?`).run(delta, loserId);
+      } else {
+        q(`UPDATE users SET elo = elo + ?, wins_count = wins_count + 1, matches_count = matches_count + 1 WHERE id = ?`).run(delta, winnerId);
+        q(`UPDATE users SET elo = MAX(0, elo - ?), matches_count = matches_count + 1 WHERE id = ?`).run(delta, loserId);
+      }
       audit(req.user.id, null, `resolve_conflict:${matchId}:winner=${winnerId}`);
     });
     return { ok: true };
