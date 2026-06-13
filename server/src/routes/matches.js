@@ -2,6 +2,7 @@ import { q, tx } from "../db.js";
 import { config } from "../config.js";
 import { ApiError, requireUser, requireCheckedIn } from "../errors.js";
 import { now, eloDelta, serializeMatch } from "../util.js";
+import { checkMatchAchievements, addFeedEvent, refreshElite } from "../achievements.js";
 
 /** Просроченные pending-матчи → timeout. Вызывается лениво перед каждой операцией. */
 export function sweepExpiredMatches(t = now()) {
@@ -90,58 +91,82 @@ export default async function matchesRoutes(app) {
     const id = Number(req.params.id);
     const claim = req.body.result;
 
-    return tx(() => {
+    // Транзакция: только запись в БД
+    const txResult = tx(() => {
       const t = now();
       const m = q(`SELECT * FROM matches WHERE id = ?`).get(id);
       if (!m || m.opponent_id !== u.id) throw new ApiError(404, "match_not_found");
 
-      if (m.status !== "pending") return { match: matchPayload(m, u.id) }; // уже разрешён — отдаём итог
+      if (m.status !== "pending") return { match: matchPayload(m, u.id), confirmed: false };
 
       if (m.expires_at < t) {
         q(`UPDATE matches SET status = 'timeout', resolved_at = ?, initiator_ack = 0, opponent_ack = 1 WHERE id = ?`)
           .run(t, id);
-        return { match: matchPayload(q(`SELECT * FROM matches WHERE id = ?`).get(id), u.id) };
+        return { match: matchPayload(q(`SELECT * FROM matches WHERE id = ?`).get(id), u.id), confirmed: false };
       }
 
-      const mirror = m.initiator_claim !== claim; // win+lose = согласие, win+win / lose+lose = конфликт
+      const mirror = m.initiator_claim !== claim;
 
       if (!mirror) {
         q(
           `UPDATE matches SET status = 'conflict', opponent_claim = ?, resolved_at = ?,
              initiator_ack = 0, opponent_ack = 1 WHERE id = ?`
         ).run(claim, t, id);
-        return { match: matchPayload(q(`SELECT * FROM matches WHERE id = ?`).get(id), u.id) };
+        return { match: matchPayload(q(`SELECT * FROM matches WHERE id = ?`).get(id), u.id), confirmed: false };
       }
 
-      // Подтверждено: считаем Эло по актуальным рейтингам внутри транзакции
+      // Подтверждено
       const init = q(`SELECT * FROM users WHERE id = ?`).get(m.initiator_id);
-      const opp = q(`SELECT * FROM users WHERE id = ?`).get(m.opponent_id);
+      const opp  = q(`SELECT * FROM users WHERE id = ?`).get(m.opponent_id);
       const initiatorWon = m.initiator_claim === "win";
       const winner = initiatorWon ? init : opp;
-      const loser = initiatorWon ? opp : init;
+      const loser  = initiatorWon ? opp  : init;
       const d = eloDelta(winner.elo, loser.elo);
 
-      q(`UPDATE users SET elo = elo + ?, matches_count = matches_count + 1, wins_count = wins_count + 1 WHERE id = ?`)
-        .run(d, winner.id);
-      q(`UPDATE users SET elo = MAX(0, elo - ?), matches_count = matches_count + 1 WHERE id = ?`)
-        .run(d, loser.id);
+      const newWinnerElo = winner.elo + d;
+      const newLoserElo  = Math.max(0, loser.elo - d);
+      const winnerStreak = winner.streak > 0 ? winner.streak + 1 : 1;
+      const loserStreak  = loser.streak  < 0 ? loser.streak - 1  : -1;
 
-      q(
-        `UPDATE matches SET
-           status = 'confirmed', opponent_claim = ?, winner_id = ?, delta = ?,
-           initiator_elo_before = ?, initiator_elo_after = ?,
-           opponent_elo_before = ?, opponent_elo_after = ?,
-           resolved_at = ?, initiator_ack = 0, opponent_ack = 1
-         WHERE id = ?`
-      ).run(
-        claim, winner.id, d,
-        init.elo, initiatorWon ? init.elo + d : Math.max(0, init.elo - d),
-        opp.elo, initiatorWon ? Math.max(0, opp.elo - d) : opp.elo + d,
-        t, id
-      );
+      q(`UPDATE users SET elo=?, matches_count=matches_count+1, wins_count=wins_count+1,
+           xp=xp+?, streak=?, best_streak=MAX(best_streak,?), peak_elo=MAX(peak_elo,?) WHERE id=?`)
+        .run(newWinnerElo, config.XP_WIN, winnerStreak, winnerStreak, newWinnerElo, winner.id);
 
-      return { match: matchPayload(q(`SELECT * FROM matches WHERE id = ?`).get(id), u.id) };
+      q(`UPDATE users SET elo=?, matches_count=matches_count+1, xp=xp+?, streak=? WHERE id=?`)
+        .run(newLoserElo, config.XP_LOSS, loserStreak, loser.id);
+
+      q(`UPDATE matches SET status='confirmed', opponent_claim=?, winner_id=?, delta=?,
+           initiator_elo_before=?, initiator_elo_after=?,
+           opponent_elo_before=?, opponent_elo_after=?,
+           resolved_at=?, initiator_ack=0, opponent_ack=1 WHERE id=?`)
+        .run(
+          claim, winner.id, d,
+          init.elo, initiatorWon ? newWinnerElo : newLoserElo,
+          opp.elo,  initiatorWon ? newLoserElo  : newWinnerElo,
+          t, id
+        );
+
+      addFeedEvent("match_win", winner.id, loser.id, {
+        winnerName: winner.name, loserName: loser.name, delta: d,
+      });
+
+      return {
+        match: matchPayload(q(`SELECT * FROM matches WHERE id = ?`).get(id), u.id),
+        confirmed: true,
+        winnerId: winner.id,
+        loserId: loser.id,
+        matchId: id,
+      };
     });
+
+    // Ачивки — вне транзакции (чистые чтения + отдельные INSERT OR IGNORE)
+    if (txResult.confirmed) {
+      try {
+        checkMatchAchievements(txResult.winnerId, txResult.loserId, txResult.matchId);
+      } catch { /* не роняем запрос из-за ачивок */ }
+    }
+
+    return { match: txResult.match };
   });
 
   // ── Инициатор отменяет ожидание ────────────────────────────

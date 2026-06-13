@@ -12,6 +12,7 @@ RUN npm ci --omit=dev
 COPY server/ ./
 COPY --from=webapp-build /build/webapp/dist /app/webapp/dist
 RUN mkdir -p /data
+ENV NODE_ENV=production
 ENV DB_PATH=/data/club.db
 EXPOSE 3000
 CMD ["node", "src/index.js"]

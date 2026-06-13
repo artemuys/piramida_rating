@@ -28,3 +28,9 @@ export function requireAdmin(req) {
   if (u.role !== "admin") throw new ApiError(403, "forbidden");
   return u;
 }
+
+export function requireSuperAdmin(req) {
+  const u = requireAdmin(req);
+  if (!u.is_super) throw new ApiError(403, "forbidden");
+  return u;
+}

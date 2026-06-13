@@ -6,12 +6,13 @@ import { haptic } from "../telegram.js";
 
 export function Onboarding() {
   const { obLang, setObLang, refreshMe, toastError } = useApp();
-  const [step, setStep] = useState(obLang ? 1 : 0); // 0 = язык
+  const [step, setStep] = useState(0); // 0 = язык (всегда начинаем с выбора языка)
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [disc, setDisc] = useState(2);
   const [pays, setPays] = useState(0);
   const [chosen, setChosen] = useState(obLang);
+  const [rulesAccepted, setRulesAccepted] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const t = getT(chosen || "ru");
@@ -136,7 +137,31 @@ export function Onboarding() {
               </div>
             </div>
           </div>
-          <button className="ob-btn green" disabled={busy} onClick={finish}>{busy ? "…" : t.step2.finish}</button>
+          <button className="ob-btn" onClick={() => setStep(4)}>{t.step2.finish}</button>
+        </>
+      ),
+    },
+    {
+      emoji: "📖", title: t.step3.title, sub: t.step3.sub,
+      content: (
+        <>
+          <div style={{
+            background: "#1c1c1e", borderRadius: 14, padding: "14px 16px", marginBottom: 16,
+            fontSize: 13, color: "rgba(255,255,255,.65)", lineHeight: 1.6,
+            maxHeight: 220, overflowY: "auto", whiteSpace: "pre-line", textAlign: "left",
+          }}>
+            {t.x.rules}
+          </div>
+          <label style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 20, cursor: "pointer", textAlign: "left" }}>
+            <input
+              type="checkbox"
+              checked={rulesAccepted}
+              onChange={(e) => setRulesAccepted(e.target.checked)}
+              style={{ marginTop: 3, width: 18, height: 18, accentColor: "#0A84FF", flexShrink: 0 }}
+            />
+            <span style={{ fontSize: 14, color: rulesAccepted ? "#fff" : "rgba(255,255,255,.6)" }}>{t.step3.accept}</span>
+          </label>
+          <button className="ob-btn green" disabled={!rulesAccepted || busy} onClick={finish}>{busy ? "…" : t.step3.finish}</button>
         </>
       ),
     },
@@ -147,7 +172,7 @@ export function Onboarding() {
   return (
     <div className="ob-wrap">
       <div className="ob-progress">
-        {[0, 1, 2].map((i) => (
+        {[0, 1, 2, 3].map((i) => (
           <div key={i} className={`ob-dot${i < step - 1 ? " done" : i === step - 1 ? " active" : ""}`} />
         ))}
       </div>

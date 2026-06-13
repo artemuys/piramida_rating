@@ -7,7 +7,6 @@ import { haptic } from "../telegram.js";
 export function Settings() {
   const { me, t, refreshMe, toastError } = useApp();
   const [name, setName] = useState(me.name);
-  const [contact, setContact] = useState(me.contact);
   const [disc, setDisc] = useState(me.prefDisc);
   const [pays, setPays] = useState(me.prefPays);
   const [lang, setLang] = useState(me.lang);
@@ -20,7 +19,6 @@ export function Settings() {
     try {
       await api.patch("/me", {
         name: name.trim(),
-        contact: contact.trim(),
         lang,
         prefDisc: disc,
         prefPays: pays,
@@ -45,11 +43,6 @@ export function Settings() {
           <div className="s-lbl">{t.settings.name}</div>
           <input className="s-inp" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} />
         </div>
-        <div className="s-row">
-          <div className="s-lbl">{t.settings.contact}</div>
-          <input className="s-inp" value={contact} maxLength={60} onChange={(e) => setContact(e.target.value)} placeholder="@username" />
-        </div>
-        <div className="s-hint" style={{ paddingBottom: 10 }}>{t.settings.hint}</div>
       </div>
 
       <div className="card">

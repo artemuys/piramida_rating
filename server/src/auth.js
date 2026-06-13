@@ -86,11 +86,20 @@ export async function authHook(req) {
   if (!tgUser) throw new ApiError(401, "auth_failed");
 
   req.tgUser = tgUser;
-  req.user = getUserByTg().get(tgUser.id) || null;
+  const dbUser = getUserByTg().get(tgUser.id) || null;
+  if (dbUser?.banned) throw new ApiError(403, "banned");
+  req.user = dbUser;
 
   // Продвижение в админы по списку из конфига (роль хранится и проверяется только в БД)
   if (req.user && config.adminTgIds.includes(tgUser.id) && req.user.role !== "admin") {
     promoteAdmin().run(req.user.id);
     req.user.role = "admin";
+  }
+
+  // Суперадмин — только по списку из конфига; получает и роль admin
+  if (req.user && config.superAdminTgIds.includes(tgUser.id) && (!req.user.is_super || req.user.role !== "admin")) {
+    q(`UPDATE users SET role = 'admin', is_super = 1 WHERE id = ?`).run(req.user.id);
+    req.user.role = "admin";
+    req.user.is_super = 1;
   }
 }

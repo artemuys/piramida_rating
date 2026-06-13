@@ -1,6 +1,6 @@
 import { q, tx } from "../db.js";
 import { config } from "../config.js";
-import { ApiError, requireAdmin } from "../errors.js";
+import { ApiError, requireAdmin, requireSuperAdmin } from "../errors.js";
 import { now, clean } from "../util.js";
 
 function audit(adminId, targetId, action) {
@@ -15,6 +15,8 @@ function adminUserRow(u, t = now()) {
     contact: u.contact,
     elo: u.elo,
     role: u.role,
+    isSuper: !!u.is_super,
+    banned: !!u.banned,
     matchesCount: u.matches_count,
     winsCount: u.wins_count,
     isActivated: u.activated_until > t,
@@ -94,8 +96,7 @@ export default async function adminRoutes(app) {
     return { ok: true, activatedUntil: t + config.ACTIVATION_MS };
   });
 
-  // Деактивация: сгорают активация и чекин, удаляются заявки, снимается поиск,
-  // отменяются незавершённые матчи
+  // Деактивация
   app.post("/admin/users/:id/deactivate", (req) => {
     const target = getTarget(req);
     if (target.id === req.user.id) throw new ApiError(400, "self_action");
@@ -110,6 +111,69 @@ export default async function adminRoutes(app) {
       ).run(t, target.id, target.id);
       audit(req.user.id, target.id, "deactivate");
     });
+    return { ok: true };
+  });
+
+  // ── Суперадмин: бан / разбан ──────────────────────────────
+  app.post("/admin/users/:id/ban", (req) => {
+    requireSuperAdmin(req);
+    const target = getTarget(req);
+    if (target.id === req.user.id) throw new ApiError(400, "self_action");
+    q(`UPDATE users SET banned = 1, activated_until = 0, checked_in_until = 0, search_until = 0 WHERE id = ?`)
+      .run(target.id);
+    audit(req.user.id, target.id, "ban");
+    return { ok: true };
+  });
+
+  app.post("/admin/users/:id/unban", (req) => {
+    requireSuperAdmin(req);
+    const target = getTarget(req);
+    q(`UPDATE users SET banned = 0 WHERE id = ?`).run(target.id);
+    audit(req.user.id, target.id, "unban");
+    return { ok: true };
+  });
+
+  // ── Суперадмин: управление ролями ────────────────────────
+  app.post("/admin/users/:id/promote", (req) => {
+    requireSuperAdmin(req);
+    const target = getTarget(req);
+    q(`UPDATE users SET role = 'admin' WHERE id = ?`).run(target.id);
+    audit(req.user.id, target.id, "promote_admin");
+    return { ok: true };
+  });
+
+  app.post("/admin/users/:id/demote", (req) => {
+    requireSuperAdmin(req);
+    const target = getTarget(req);
+    if (target.id === req.user.id) throw new ApiError(400, "self_action");
+    q(`UPDATE users SET role = 'user', is_super = 0 WHERE id = ?`).run(target.id);
+    audit(req.user.id, target.id, "demote_admin");
+    return { ok: true };
+  });
+
+  // ── Клубные объявления (суперадмин) ──────────────────────
+  const announceSchema = {
+    body: {
+      type: "object",
+      required: ["text"],
+      additionalProperties: false,
+      properties: { text: { type: "string", minLength: 1, maxLength: 1000 } },
+    },
+  };
+
+  app.post("/admin/announce", { schema: announceSchema }, (req) => {
+    requireSuperAdmin(req);
+    const text = clean(req.body.text, 1000);
+    if (text.length < 1) throw new ApiError(400, "validation");
+    q(`INSERT INTO announcements (author_id, text, created_at) VALUES (?, ?, ?)`)
+      .run(req.user.id, text, now());
+    return { ok: true };
+  });
+
+  app.delete("/admin/announce/:id", (req) => {
+    requireSuperAdmin(req);
+    const id = Number(req.params.id) || 0;
+    q(`DELETE FROM announcements WHERE id = ?`).run(id);
     return { ok: true };
   });
 }

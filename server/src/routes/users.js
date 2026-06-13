@@ -2,17 +2,24 @@ import { q } from "../db.js";
 import { config } from "../config.js";
 import { ApiError, requireUser } from "../errors.js";
 import { clean, now, publicUser } from "../util.js";
+import { rankOf, levelFromXp } from "../achievements.js";
 
 function serializeMe(u) {
   const t = now();
   const place = q(`SELECT COUNT(*) + 1 AS p FROM users WHERE elo > ?`).get(u.elo).p;
   const favoritesCount = q(`SELECT COUNT(*) AS c FROM favorites WHERE user_id = ?`).get(u.id).c;
+  const unseenAch = q(`SELECT COUNT(*) AS c FROM achievements WHERE user_id = ? AND seen = 0`).get(u.id).c;
+  const pendingDuels = q(`SELECT COUNT(*) AS c FROM duels WHERE opponent_id = ? AND status = 'open'`).get(u.id).c;
+  const rank = rankOf(u.elo);
+  const xp = u.xp ?? 0;
+  const level = levelFromXp(xp);
   return {
     id: u.id,
     name: u.name,
     contact: u.contact,
     lang: u.lang,
     role: u.role,
+    isSuper: !!u.is_super,
     prefDisc: u.pref_disc,
     prefPays: u.pref_pays,
     elo: u.elo,
@@ -20,6 +27,14 @@ function serializeMe(u) {
     winsCount: u.wins_count,
     place,
     favoritesCount,
+    rank,
+    xp,
+    level,
+    streak: u.streak ?? 0,
+    bestStreak: u.best_streak ?? 0,
+    peakElo: u.peak_elo ?? u.elo,
+    unseenAchievements: unseenAch,
+    pendingDuels,
     isActivated: u.activated_until > t,
     activatedUntil: u.activated_until,
     isCheckedIn: u.checked_in_until > t,
@@ -133,6 +148,7 @@ export default async function usersRoutes(app) {
     const p = q(`SELECT * FROM users WHERE id = ?`).get(id);
     if (!p) throw new ApiError(404, "player_not_found");
 
+    const t = now();
     const isFavorite = !!q(`SELECT 1 FROM favorites WHERE user_id = ? AND fav_id = ?`).get(u.id, id);
     const h2h = q(
       `SELECT * FROM matches
@@ -141,16 +157,56 @@ export default async function usersRoutes(app) {
        ORDER BY resolved_at DESC LIMIT ?`
     ).all(u.id, id, id, u.id, config.HISTORY_LIMIT);
 
+    // Последние 5 матчей игрока (для его профиля)
+    const recentMatches = q(
+      `SELECT m.*, o.id AS o_id, o.name AS o_name, o.elo AS o_elo
+       FROM matches m
+       JOIN users o ON o.id = CASE WHEN m.initiator_id = ? THEN m.opponent_id ELSE m.initiator_id END
+       WHERE m.status = 'confirmed' AND (m.initiator_id = ? OR m.opponent_id = ?)
+       ORDER BY m.resolved_at DESC LIMIT 5`
+    ).all(id, id, id);
+
+    // H2H счёт всего
+    const h2hTotal = q(
+      `SELECT COUNT(*) AS total,
+              SUM(CASE WHEN winner_id = ? THEN 1 ELSE 0 END) AS my_wins
+       FROM matches
+       WHERE status = 'confirmed'
+         AND ((initiator_id = ? AND opponent_id = ?) OR (initiator_id = ? AND opponent_id = ?))`
+    ).get(u.id, u.id, id, id, u.id);
+
+    // Место в рейтинге
+    const place = q(`SELECT COUNT(*) + 1 AS p FROM users WHERE elo > ?`).get(p.elo).p;
+
+    const rank = rankOf(p.elo);
+    const xp = p.xp ?? 0;
+    const level = levelFromXp(xp);
+
     return {
       player: {
         ...publicUser(p),
-        // контакты видны только активированным участникам клуба
-        contact: u.activated_until > now() ? p.contact : null,
+        contact: u.activated_until > t ? p.contact : null,
+        rank,
+        xp,
+        level,
+        streak: p.streak ?? 0,
+        bestStreak: p.best_streak ?? 0,
+        peakElo: p.peak_elo ?? p.elo,
+        place,
       },
       isFavorite,
       h2h: h2h.map((m) => {
         const iWon = m.winner_id === u.id;
         return { id: m.id, date: m.resolved_at, iWon, delta: iWon ? m.delta : -m.delta };
+      }),
+      h2hTotal: {
+        total: h2hTotal?.total ?? 0,
+        myWins: h2hTotal?.my_wins ?? 0,
+        theirWins: (h2hTotal?.total ?? 0) - (h2hTotal?.my_wins ?? 0),
+      },
+      recentMatches: recentMatches.map((m) => {
+        const won = m.winner_id === id;
+        return { id: m.id, date: m.resolved_at, won, delta: won ? m.delta : -m.delta, opponentName: m.o_name, opponentId: m.o_id };
       }),
     };
   });

@@ -1,6 +1,6 @@
 import { Component } from "react";
 import { useApp } from "./store.jsx";
-import { avaColor, initials, winPct } from "./util.js";
+import { avaColor, initials, winPct, rankOf, xpProgress } from "./util.js";
 
 export function Ava({ id, name, size = 38 }) {
   const color = avaColor(id);
@@ -26,6 +26,66 @@ export function Stats({ elo, place, matches, wins, t }) {
       <div className="stat"><div className="stat-val">#{place}</div><div className="stat-lbl">{t.place}</div></div>
       <div className="stat"><div className="stat-val">{matches}</div><div className="stat-lbl">{t.matches}</div></div>
       <div className="stat"><div className="stat-val">{winPct(matches, wins)}%</div><div className="stat-lbl">{t.wins}</div></div>
+    </div>
+  );
+}
+
+export function RankBadge({ elo, size = "md" }) {
+  const rank = rankOf(elo);
+  const sizes = { sm: { font: 11, px: "3px 8px" }, md: { font: 13, px: "4px 12px" }, lg: { font: 16, px: "7px 16px" } };
+  const s = sizes[size] || sizes.md;
+  return (
+    <span
+      className="rank-badge"
+      style={{
+        background: rank.gradient,
+        color: rank.color,
+        fontSize: s.font,
+        padding: s.px,
+        border: `1px solid ${rank.color}33`,
+      }}
+    >
+      {rank.emoji} {rank.label}
+    </span>
+  );
+}
+
+export function LevelBar({ xp, style }) {
+  const prog = xpProgress(xp ?? 0);
+  return (
+    <div className="level-bar-wrap" style={style}>
+      <div className="level-bar-row">
+        <span className="level-bar-lbl">Ур. <strong>{prog.level}</strong></span>
+        <span className="level-bar-xp">{prog.current} / {prog.needed} XP</span>
+      </div>
+      <div className="level-bar-track">
+        <div className="level-bar-fill" style={{ width: `${prog.pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+export function StreakBadge({ streak }) {
+  if (!streak || streak === 0) return null;
+  const wins = streak > 0;
+  const count = Math.abs(streak);
+  if (count < 2) return null;
+  return (
+    <span className={`streak-badge${wins ? " streak-win" : " streak-lose"}`}>
+      {wins ? "🔥" : "❄️"} {count}
+    </span>
+  );
+}
+
+export function WinStreak({ matches }) {
+  if (!matches || matches.length === 0) return null;
+  const last6 = matches.slice(0, 6);
+  return (
+    <div className="win-streak-row">
+      {last6.map((m, i) => (
+        <div key={i} className={`ws-dot ${m.iWon || m.won ? "ws-w" : "ws-l"}`} title={m.iWon || m.won ? "W" : "L"} />
+      ))}
+      {matches.length > 6 && <span className="ws-more">···</span>}
     </div>
   );
 }
@@ -134,6 +194,8 @@ export function MatchResultModal({ match, onClose }) {
   const mySide = resolved ? (match.iWon ? "win" : "lose") : "neutral";
   const theirSide = resolved ? (match.iWon ? "lose" : "win") : "neutral";
 
+  const newStreak = match.status === "confirmed" && match.iWon ? (me.streak > 0 ? me.streak : 1) : null;
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -142,6 +204,11 @@ export function MatchResultModal({ match, onClose }) {
           <span className="modal-icon">{cfg.icon}</span>
           <div className={`modal-result-lbl ${cfg.cls}`}>{cfg.label}</div>
           {subs[type] && <div className="modal-sub">{subs[type]}</div>}
+          {newStreak >= 3 && (
+            <div style={{ marginTop: 8 }}>
+              <span className="streak-badge streak-win">🔥 Серия {newStreak}!</span>
+            </div>
+          )}
         </div>
         <div className="modal-body">
           <div className="modal-players">

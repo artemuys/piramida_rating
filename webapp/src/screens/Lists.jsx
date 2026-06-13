@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { useApp } from "../store.jsx";
-import { Ava, Crown, Spinner, Empty } from "../components.jsx";
-import { fmtDate } from "../util.js";
+import { Ava, Crown, Spinner, Empty, RankBadge } from "../components.jsx";
+import { fmtDate, rankOf } from "../util.js";
 
 /** Рейтинг клуба: топ-100, текущий пользователь подсвечен */
 export function Rating({ navigate }) {
@@ -27,11 +27,16 @@ export function Rating({ navigate }) {
             className={`r-row${you ? " r-you" : ""}`}
             onClick={() => !you && navigate("player", { playerId: p.id, title: p.name })}
           >
-            <span className="r-pos">{i + 1}</span>
+            <span className="r-pos">
+              {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}
+            </span>
             <Ava id={p.id} name={p.name} />
-            <span className="r-name">
-              {p.name}<Crown role={p.role} />
-              {you && <span className="r-you-lbl">{t.rating.you}</span>}
+            <span className="r-name" style={{ minWidth: 0 }}>
+              <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {p.name}<Crown role={p.role} />
+                {you && <span className="r-you-lbl">{t.rating.you}</span>}
+              </span>
+              <RankBadge elo={p.elo} size="sm" />
             </span>
             <span className="r-elo">{p.elo}</span>
           </div>

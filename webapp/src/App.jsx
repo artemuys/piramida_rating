@@ -10,6 +10,10 @@ import { Player } from "./screens/Player.jsx";
 import { Rating, History, Favorites } from "./screens/Lists.jsx";
 import { Settings } from "./screens/Settings.jsx";
 import { Admin, AdminPlayer } from "./screens/Admin.jsx";
+import { Duels } from "./screens/Duels.jsx";
+import { Achievements } from "./screens/Achievements.jsx";
+import { Records } from "./screens/Records.jsx";
+import { SuperAdmin } from "./screens/SuperAdmin.jsx";
 import { setBackButton, insideTelegram } from "./telegram.js";
 
 const SCREENS = {
@@ -24,6 +28,10 @@ const SCREENS = {
   "search-list": { component: SearchListScreen, title: (t) => t.nav.whoSearching },
   admin: { component: Admin, title: (t) => t.nav.admin, adminOnly: true },
   "admin-player": { component: AdminPlayer, title: (t) => t.nav.admin, adminOnly: true },
+  duels: { component: Duels, title: (t) => t.nav.duels },
+  achievements: { component: Achievements, title: (t) => t.nav.achievements },
+  records: { component: Records, title: (t) => t.nav.records },
+  superadmin: { component: SuperAdmin, title: (t) => t.nav.superadmin, superOnly: true },
 };
 
 function Shell() {
@@ -37,6 +45,7 @@ function Shell() {
   function navigate(id, params = {}) {
     if (!SCREENS[id]) return;
     if (SCREENS[id].adminOnly && me?.role !== "admin") return;
+    if (SCREENS[id].superOnly && !me?.isSuper) return;
     setNav((prev) => [...prev, { id, params }]);
   }
   function goBack() {

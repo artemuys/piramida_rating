@@ -7,13 +7,14 @@ import { haptic } from "../telegram.js";
 
 function NewRequestForm({ onDone, onCancel }) {
   const { me, t, toastError } = useApp();
-  const [dayOffset, setDayOffset] = useState(0);
+  const [dayOffset, setDayOffset] = useState(1);
   const [timeSlot, setTimeSlot] = useState(0);
   const [disc, setDisc] = useState(me.prefDisc === 2 ? 0 : me.prefDisc);
   const [pays, setPays] = useState(me.prefPays);
   const [busy, setBusy] = useState(false);
 
-  const dayLabels = [t.apps.today, t.apps.tomorrow, fmtDayLabel(offsetDay(2), t, me.lang)];
+  const DAY_OFFSETS = [1, 2, 3];
+  const dayLabels = [t.apps.tomorrow, fmtDayLabel(offsetDay(2), t, me.lang), fmtDayLabel(offsetDay(3), t, me.lang)];
 
   async function create() {
     if (busy) return;
@@ -35,7 +36,7 @@ function NewRequestForm({ onDone, onCancel }) {
         <div className="tog-lbl">{t.apps.day}</div>
         <div className="tog-g">
           {dayLabels.map((label, i) => (
-            <button key={i} className={`tog${dayOffset === i ? " on" : ""}`} onClick={() => setDayOffset(i)}>{label}</button>
+            <button key={i} className={`tog${dayOffset === DAY_OFFSETS[i] ? " on" : ""}`} onClick={() => setDayOffset(DAY_OFFSETS[i])}>{label}</button>
           ))}
         </div>
       </div>

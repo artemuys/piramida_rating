@@ -9,7 +9,7 @@ const createSchema = {
     required: ["dayOffset", "timeSlot", "disc", "pays"],
     additionalProperties: false,
     properties: {
-      dayOffset: { type: "integer", minimum: 0, maximum: 2 },
+      dayOffset: { type: "integer", minimum: 1, maximum: 3 },
       timeSlot: { type: "integer", minimum: 0, maximum: 1 },
       disc: { type: "integer", minimum: 0, maximum: 1 },
       pays: { type: "integer", minimum: 0, maximum: 1 },

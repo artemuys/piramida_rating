@@ -52,8 +52,20 @@ export function AppProvider({ children }) {
   // Фоновое обновление профиля (статусы активации/чекина истекают со временем)
   useEffect(() => {
     if (phase !== "ready") return;
-    const id = setInterval(refreshMe, 60_000);
+    const id = setInterval(refreshMe, 30_000);
     return () => clearInterval(id);
+  }, [phase, refreshMe]);
+
+  // Немедленное обновление при возврате в приложение (Telegram WebApp может засыпать)
+  useEffect(() => {
+    if (phase !== "ready") return;
+    const onVisible = () => { if (document.visibilityState === "visible") refreshMe(); };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", refreshMe);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", refreshMe);
+    };
   }, [phase, refreshMe]);
 
   const pokeMatches = useCallback(() => setMatchPoke((n) => n + 1), []);
