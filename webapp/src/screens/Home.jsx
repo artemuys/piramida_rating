@@ -1,14 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { useApp } from "../store.jsx";
-import { Ava, Crown, RulesModal, Spinner, Stats, Empty, RankBadge, RankProgress, LevelBar, StreakBadge, StreakProgress } from "../components.jsx";
+import { Ava, Crown, RulesModal, Spinner, Stats, Empty, RankBadge, RankProgress, LevelBar, StreakBadge, StreakProgress, FeedSkeleton } from "../components.jsx";
 import { useNow, fmtElapsed, fmtDateTime, fmtAgo } from "../util.js";
 import { haptic } from "../telegram.js";
 import { getAchMeta } from "./Achievements.jsx";
 
 function NavRow({ icon, iconBg, label, value, onClick, locked, badge }) {
+  function handleClick() {
+    if (locked) return;
+    haptic("selection");
+    onClick?.();
+  }
   return (
-    <div className={`list-row${locked ? " locked" : ""}`} onClick={locked ? undefined : onClick}>
+    <div className={`list-row${locked ? " locked" : ""}`} onClick={handleClick}>
       <div className="list-row-icon" style={{ background: iconBg }}>{icon}</div>
       <span className="list-row-label">{label}</span>
       {badge > 0 && <span className="notif-dot">{badge}</span>}
@@ -130,7 +135,7 @@ function LiveFeed({ navigate }) {
     api.get("/feed").then(r => setFeed(r.feed)).catch(() => setFeed([]));
   }, []);
 
-  if (!feed) return null;
+  if (!feed) return <FeedSkeleton />;
   if (feed.length === 0) return null;
 
   function renderFeedItem(item) {
@@ -210,13 +215,77 @@ function LiveFeed({ navigate }) {
   );
 }
 
+function usePullToRefresh(onRefresh) {
+  const [ptr, setPtr] = useState({ active: false, progress: 0, refreshing: false });
+  const startY = useRef(null);
+  const progressRef = useRef(0);
+  const refreshingRef = useRef(false);
+  const onRefreshRef = useRef(onRefresh);
+  onRefreshRef.current = onRefresh;
+
+  useEffect(() => {
+    const THRESHOLD = 72;
+
+    function onTouchStart(e) {
+      if (window.scrollY > 0) return;
+      startY.current = e.touches[0].clientY;
+    }
+    function onTouchMove(e) {
+      if (startY.current === null) return;
+      const dy = e.touches[0].clientY - startY.current;
+      if (dy <= 0) { startY.current = null; return; }
+      const progress = Math.min(dy / THRESHOLD, 1);
+      progressRef.current = progress;
+      setPtr(p => ({ ...p, active: true, progress }));
+    }
+    function onTouchEnd() {
+      if (startY.current === null) return;
+      const prog = progressRef.current;
+      startY.current = null;
+      progressRef.current = 0;
+      if (prog >= 1 && !refreshingRef.current) {
+        refreshingRef.current = true;
+        haptic("ok");
+        setPtr({ active: false, progress: 0, refreshing: true });
+        Promise.resolve(onRefreshRef.current()).finally(() => {
+          refreshingRef.current = false;
+          setPtr({ active: false, progress: 0, refreshing: false });
+        });
+      } else {
+        setPtr({ active: false, progress: 0, refreshing: false });
+      }
+    }
+
+    document.addEventListener("touchstart", onTouchStart, { passive: true });
+    document.addEventListener("touchmove", onTouchMove, { passive: true });
+    document.addEventListener("touchend", onTouchEnd, { passive: true });
+    return () => {
+      document.removeEventListener("touchstart", onTouchStart);
+      document.removeEventListener("touchmove", onTouchMove);
+      document.removeEventListener("touchend", onTouchEnd);
+    };
+  }, []);
+
+  return ptr;
+}
+
 export function Home({ navigate }) {
-  const { me, t, lang } = useApp();
+  const { me, t, lang, refreshMe } = useApp();
   const [rules, setRules] = useState(false);
+  const ptr = usePullToRefresh(refreshMe);
 
   return (
     <>
       {rules && <RulesModal onClose={() => setRules(false)} />}
+
+      <div style={{ position: "relative" }}>
+        <div className={`ptr-indicator${ptr.refreshing ? " active" : ""}`}
+          style={{ opacity: ptr.refreshing ? 1 : ptr.progress }}>
+          {ptr.refreshing
+            ? <><div className="ptr-spinner" />Обновление...</>
+            : <span style={{ transform: `rotate(${ptr.progress * 180}deg)`, display: "inline-block" }}>↓</span>}
+        </div>
+      </div>
 
       <div className="card hero-card">
         <div className="user-hero">

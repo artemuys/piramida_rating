@@ -120,6 +120,8 @@ body {
 /* ── HERO CARD ────────────────────────────────────────────── */
 .hero-card {
   background: linear-gradient(170deg, #10102a 0%, #09091a 55%, #0d0d22 100%);
+  background-size: 200% 200%;
+  animation: hero-drift 14s ease infinite;
   border-color: rgba(59,142,255,.14);
   border-top-color: rgba(59,142,255,.22);
   box-shadow:
@@ -446,6 +448,13 @@ body {
 
 /* ── KEYFRAMES ────────────────────────────────────────────── */
 @keyframes clock-tick { to { transform: rotate(360deg); } }
+
+@keyframes hero-drift {
+  0%   { background-position: 0% 0%; }
+  33%  { background-position: 80% 20%; }
+  66%  { background-position: 20% 80%; }
+  100% { background-position: 0% 0%; }
+}
 
 @keyframes pulse-ring {
   0%   { box-shadow: 0 0 0 0 rgba(0,204,124,.5); }
@@ -1179,8 +1188,46 @@ body {
 }
 .rank-progress-fill {
   height: 100%; border-radius: 4px;
-  transition: width .5s cubic-bezier(.4,0,.2,1);
+  transition: width .5s cubic-bezier(.4,0,.2,1), box-shadow .5s;
 }
 
 /* ── OB FIELD ERROR ──────────────────────────────────────── */
 .ob-field.err { box-shadow: 0 0 0 2px #FF453A55; }
+
+/* ── SKELETON ────────────────────────────────────────────── */
+@keyframes skel-shimmer {
+  0%   { background-position: -300px 0; }
+  100% { background-position: 300px 0; }
+}
+.skel {
+  background: linear-gradient(90deg,
+    rgba(255,255,255,.04) 25%,
+    rgba(255,255,255,.09) 50%,
+    rgba(255,255,255,.04) 75%);
+  background-size: 600px 100%;
+  animation: skel-shimmer 1.5s infinite linear;
+  border-radius: 6px;
+}
+.feed-skel-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.feed-skel-item:last-child { border-bottom: none; }
+
+/* ── PULL TO REFRESH ─────────────────────────────────────── */
+@keyframes ptr-spin { to { transform: rotate(360deg); } }
+.ptr-indicator {
+  position: absolute; top: -44px; left: 0; right: 0;
+  display: flex; align-items: center; justify-content: center;
+  height: 44px; color: var(--text-3); font-size: 13px; gap: 8px;
+  transition: opacity .2s;
+  pointer-events: none;
+}
+.ptr-indicator.active { color: var(--blue); }
+.ptr-spinner {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 1.5px solid rgba(59,142,255,.25);
+  border-top-color: var(--blue);
+  animation: ptr-spin .7s linear infinite;
+}

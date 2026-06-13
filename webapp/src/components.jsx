@@ -19,10 +19,27 @@ export function Crown({ role }) {
   return <span title="admin" style={{ marginLeft: 4 }}>👑</span>;
 }
 
+function AnimatedCounter({ value, duration = 900 }) {
+  const [display, setDisplay] = useState(0);
+  const rafRef = useRef(null);
+  useEffect(() => {
+    const start = performance.now();
+    const step = (ts) => {
+      const prog = Math.min((ts - start) / duration, 1);
+      const ease = 1 - Math.pow(1 - prog, 3);
+      setDisplay(Math.round(value * ease));
+      if (prog < 1) rafRef.current = requestAnimationFrame(step);
+    };
+    rafRef.current = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  return <>{display}</>;
+}
+
 export function Stats({ elo, place, matches, wins, t }) {
   return (
     <div className="stats-row">
-      <div className="stat"><div className="stat-val">{elo}</div><div className="stat-lbl">{t.elo}</div></div>
+      <div className="stat"><div className="stat-val"><AnimatedCounter value={elo} /></div><div className="stat-lbl">{t.elo}</div></div>
       <div className="stat"><div className="stat-val">#{place}</div><div className="stat-lbl">{t.place}</div></div>
       <div className="stat"><div className="stat-val">{matches}</div><div className="stat-lbl">{t.matches}</div></div>
       <div className="stat"><div className="stat-val">{winPct(matches, wins)}%</div><div className="stat-lbl">{t.wins}</div></div>
@@ -60,7 +77,7 @@ export function RankProgress({ elo }) {
           <span style={{ color: rank.color }}>Максимальный ранг</span>
         </div>
         <div className="rank-progress-track">
-          <div className="rank-progress-fill" style={{ width: "100%", background: rank.color }} />
+          <div className="rank-progress-fill" style={{ width: "100%", background: rank.color, boxShadow: `0 0 8px ${rank.color}` }} />
         </div>
       </div>
     );
@@ -75,7 +92,7 @@ export function RankProgress({ elo }) {
         <span style={{ color: "rgba(255,255,255,.4)", fontSize: 12 }}>до {nextRank?.emoji} {nextRank?.label}: +{toNext} эло</span>
       </div>
       <div className="rank-progress-track">
-        <div className="rank-progress-fill" style={{ width: `${pct}%`, background: rank.color }} />
+        <div className="rank-progress-fill" style={{ width: `${pct}%`, background: rank.color, boxShadow: `0 0 8px ${rank.color}` }} />
       </div>
     </div>
   );
@@ -375,7 +392,7 @@ function XpBarAnim({ xpBefore, xpAfter, gain }) {
   );
 }
 
-function AnimatedNumber({ value, duration = 800 }) {
+export function AnimatedNumber({ value, duration = 800 }) {
   const [display, setDisplay] = useState(value);
   const startRef = useRef(null);
   const startValRef = useRef(value);
@@ -397,6 +414,25 @@ function AnimatedNumber({ value, duration = 800 }) {
   }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return <>{display}</>;
+}
+
+export function FeedSkeleton() {
+  return (
+    <div className="card feed-card">
+      <div className="feed-header">
+        <div className="skel" style={{ width: 80, height: 14 }} />
+      </div>
+      {[1, 2, 3].map(i => (
+        <div key={i} className="feed-skel-item">
+          <div className="skel" style={{ width: 24, height: 24, borderRadius: "50%", flexShrink: 0 }} />
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+            <div className="skel" style={{ height: 12, width: `${55 + i * 12}%` }} />
+            <div className="skel" style={{ height: 10, width: 48 }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export class ErrorBoundary extends Component {
