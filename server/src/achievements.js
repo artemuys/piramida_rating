@@ -130,11 +130,14 @@ export function checkMatchAchievements(winnerId, loserId, matchId, discipline = 
       }
     }
 
-    // Ты пытался
+    // Ты пытался (только если в клубе ≥10 игроков, иначе топ-3 = все)
     if (!won) {
-      const oppElo = q(`SELECT ${eloCol} AS e FROM users WHERE id=?`).get(oppId)?.e ?? 0;
-      const above = q(`SELECT COUNT(*) AS c FROM users WHERE ${eloCol} > ?`).get(oppElo).c;
-      if (above < 3) tryGrant(userId, "tried");
+      const totalPlayers = q(`SELECT COUNT(*) AS c FROM users`).get().c;
+      if (totalPlayers >= 10) {
+        const oppElo = q(`SELECT ${eloCol} AS e FROM users WHERE id=?`).get(oppId)?.e ?? 0;
+        const above = q(`SELECT COUNT(*) AS c FROM users WHERE ${eloCol} > ?`).get(oppElo).c;
+        if (above < 3) tryGrant(userId, "tried");
+      }
     }
 
     // Экстраверт: 20 уникальных
@@ -184,6 +187,14 @@ export function refreshElite(discipline = 'pool') {
   const eloCol = discipline === 'pyramid' ? 'elo_pyramid' : 'elo';
   const prefix = discipline === 'pyramid' ? 'p:' : '';
   const eliteCode = `${prefix}elite`;
+
+  // Не выдаём elite пока в клубе меньше 10 игроков
+  const totalPlayers = q(`SELECT COUNT(*) AS c FROM users`).get().c;
+  if (totalPlayers < 10) {
+    q(`DELETE FROM achievements WHERE code=?`).run(eliteCode);
+    return;
+  }
+
   const top3 = q(`SELECT id FROM users ORDER BY ${eloCol} DESC LIMIT 3`).all();
   const ids = top3.map(u => u.id);
   if (!ids.length) return;
