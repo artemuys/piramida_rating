@@ -99,6 +99,7 @@ const onboardSchema = {
       lang: { type: "string", enum: ["en", "pl", "uk", "ru"] },
       prefDisc: { type: "integer", minimum: 0, maximum: 2 },
       prefPays: { type: "integer", minimum: 0, maximum: 1 },
+      activeDiscipline: { type: "string", enum: ["pool", "pyramid"] },
     },
   },
 };
@@ -135,11 +136,11 @@ export default async function usersRoutes(app) {
 
     const role = config.adminTgIds.includes(req.tgUser.id) ? "admin" : "user";
     const r = q(
-      `INSERT INTO users (tg_id, role, name, contact, contact_type, lang, pref_disc, pref_pays, elo, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO users (tg_id, role, name, contact, contact_type, lang, pref_disc, pref_pays, active_discipline, elo, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       req.tgUser.id, role, name, contact, contactType, req.body.lang,
-      req.body.prefDisc ?? 2, req.body.prefPays ?? 0, config.ELO_START, now()
+      req.body.prefDisc ?? 2, req.body.prefPays ?? 0, req.body.activeDiscipline ?? 'pool', config.ELO_START, now()
     );
     const me = q(`SELECT * FROM users WHERE id = ?`).get(Number(r.lastInsertRowid));
     return { me: serializeMe(me) };

@@ -20,6 +20,7 @@ export function Onboarding() {
   const hasTgUsername = !!tgUsername;
   const [phone, setPhone] = useState("");
   const [contactType, setContactType] = useState(hasTgUsername ? "telegram" : "phone");
+  const [activeDiscipline, setActiveDiscipline] = useState('pool');
   const [disc, setDisc] = useState(2);
   const [pays, setPays] = useState(0);
   const [chosen, setChosen] = useState(obLang);
@@ -50,6 +51,7 @@ export function Onboarding() {
         lang: chosen,
         prefDisc: disc,
         prefPays: pays,
+        activeDiscipline,
       });
       haptic("ok");
       await refreshMe();
@@ -182,13 +184,26 @@ export function Onboarding() {
         <>
           <div className="ob-prefs">
             <div>
-              <div className="ob-pref-label">{t.step2.disc}</div>
+              <div className="ob-pref-label">{t.disc_switch?.label ?? "Дисциплина"}</div>
               <div className="tog-g">
-                {t.discOpts.map((d, i) => (
-                  <button key={i} className={`tog${disc === i ? " on" : ""}`} onClick={() => setDisc(i)}>{d}</button>
-                ))}
+                <button className={`tog${activeDiscipline === 'pool' ? " on" : ""}`} onClick={() => setActiveDiscipline('pool')}>
+                  🎱 {t.disc_switch?.pool ?? "Пул"}
+                </button>
+                <button className={`tog${activeDiscipline === 'pyramid' ? " on" : ""}`} onClick={() => setActiveDiscipline('pyramid')}>
+                  🔺 {t.disc_switch?.pyramid ?? "Пирамида"}
+                </button>
               </div>
             </div>
+            {activeDiscipline === 'pyramid' && (
+              <div>
+                <div className="ob-pref-label">{t.step2.disc}</div>
+                <div className="tog-g">
+                  {t.discOpts.map((d, i) => (
+                    <button key={i} className={`tog${disc === i ? " on" : ""}`} onClick={() => setDisc(i)}>{d}</button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div>
               <div className="ob-pref-label">{t.step2.pays}</div>
               <div className="tog-g">
