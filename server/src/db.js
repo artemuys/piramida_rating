@@ -176,32 +176,6 @@ try {
   /* sqlite_sequence ещё не создана — появится после первой вставки, ID начнутся с 1; не критично */
 }
 
-// Первоначальный seed — выполняется один раз (INSERT OR IGNORE по tg_id UNIQUE)
-{
-  const t = Math.floor(Date.now() / 1000);
-  const activeUntil = t + 365 * 24 * 3600;
-  const seed = [
-    [607848091,  "admin", "Dmitriy",              "@dm232z",     1022, 7],
-    [678539493,  "admin", "Владислав",             "@artemuyst",  1000, 12],
-    [1060680314, "admin", "Лёша",                 "@es3maile",   1074, 11],
-    [6824436585, "user",  "ㅤ",                   "",            1000, 0],
-    [398896183,  "user",  "Yevhenii",              "@Eugene05",   1092, 11],
-    [397086127,  "user",  "Игорь",                "@kigor_o",    1000, 12],
-    [6750211675, "user",  "илья",                 "",            1041, 9],
-    [402041729,  "user",  "Leonid",               "@peleoni",    1000, 0],
-    [456911841,  "user",  "Вадим",                "@Rem3mberMe", 1000, 0],
-    [7590821576, "user",  ".",                    "@artemuystq", 1000, 0],
-    [6341880553, "user",  "Владислав",            "",            1000, 0],
-    [548037052,  "user",  "Vladimir Zavgorodniy", "@Texproff",   1039, 2],
-  ];
-  const stmt = db.prepare(
-    `INSERT OR IGNORE INTO users (tg_id,role,name,contact,elo,matches_count,activated_until,created_at)
-     VALUES (?,?,?,?,?,?,?,?)`
-  );
-  for (const [tg_id, role, name, contact, elo, mc] of seed) {
-    stmt.run(tg_id, role, name, contact, elo, mc, tg_id === 548037052 ? 0 : activeUntil, t);
-  }
-}
 
 // ── Одноразовый бэкфилл новых полей из истории матчей (маркер в meta) ──
 {
