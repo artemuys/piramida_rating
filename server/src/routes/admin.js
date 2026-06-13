@@ -462,11 +462,32 @@ export default async function adminRoutes(app) {
     if (target.id === req.user.id) throw new ApiError(400, "self_action");
     if (target.is_super) throw new ApiError(400, "cannot_delete_super");
     tx(() => {
+      // Откатить ЭЛО противникам за подтверждённые матчи
+      const confirmed = q(
+        `SELECT * FROM matches WHERE status = 'confirmed' AND (initiator_id = ? OR opponent_id = ?)`
+      ).all(target.id, target.id);
+      for (const m of confirmed) {
+        if (!m.winner_id || !m.delta) continue;
+        const loserId = m.winner_id === m.initiator_id ? m.opponent_id : m.initiator_id;
+        const oppId = m.initiator_id === target.id ? m.opponent_id : m.initiator_id;
+        if (oppId === target.id) continue; // оба — один и тот же (не бывает, но страховка)
+        if (m.winner_id === target.id) {
+          // удаляемый выиграл — у противника забрали ЭЛО, возвращаем
+          q(`UPDATE users SET elo = elo + ?, matches_count = MAX(0, matches_count - 1) WHERE id = ?`)
+            .run(m.delta, loserId === target.id ? oppId : loserId);
+        } else {
+          // удаляемый проиграл — у противника добавили ЭЛО, забираем
+          q(`UPDATE users SET elo = MAX(0, elo - ?), wins_count = MAX(0, wins_count - 1), matches_count = MAX(0, matches_count - 1) WHERE id = ?`)
+            .run(m.delta, m.winner_id);
+        }
+      }
+      // Удалить все матчи (FK без CASCADE)
+      q(`DELETE FROM matches WHERE initiator_id = ? OR opponent_id = ?`).run(target.id, target.id);
       q(`DELETE FROM requests WHERE user_id = ?`).run(target.id);
       q(`DELETE FROM favorites WHERE user_id = ? OR fav_id = ?`).run(target.id, target.id);
       q(`DELETE FROM duels WHERE challenger_id = ? OR opponent_id = ?`).run(target.id, target.id);
       q(`DELETE FROM achievements WHERE user_id = ?`).run(target.id);
-      q(`UPDATE matches SET status = 'cancelled' WHERE status = 'pending' AND (initiator_id = ? OR opponent_id = ?)`).run(target.id, target.id);
+      q(`DELETE FROM feed WHERE actor_id = ? OR target_id = ?`).run(target.id, target.id);
       q(`DELETE FROM users WHERE id = ?`).run(target.id);
       audit(req.user.id, null, `delete_user:${target.id}:${target.name}`);
     });
