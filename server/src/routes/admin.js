@@ -468,17 +468,28 @@ export default async function adminRoutes(app) {
       ).all(target.id, target.id);
       for (const m of confirmed) {
         if (!m.winner_id || !m.delta) continue;
-        const loserId = m.winner_id === m.initiator_id ? m.opponent_id : m.initiator_id;
+        const isPyramid = m.discipline === "pyramid";
         const oppId = m.initiator_id === target.id ? m.opponent_id : m.initiator_id;
-        if (oppId === target.id) continue; // оба — один и тот же (не бывает, но страховка)
-        if (m.winner_id === target.id) {
-          // удаляемый выиграл — у противника забрали ЭЛО, возвращаем
-          q(`UPDATE users SET elo = elo + ?, matches_count = MAX(0, matches_count - 1) WHERE id = ?`)
-            .run(m.delta, loserId === target.id ? oppId : loserId);
+        if (isPyramid) {
+          if (m.winner_id === target.id) {
+            // удаляемый выиграл пирамиду — у противника (loserId=oppId) забрали elo_pyramid, возвращаем
+            q(`UPDATE users SET elo_pyramid = elo_pyramid + ?, matches_count_pyramid = MAX(0, matches_count_pyramid - 1) WHERE id = ?`)
+              .run(m.delta, oppId);
+          } else {
+            // удаляемый проиграл пирамиду — у победителя (oppId) добавили elo_pyramid, забираем
+            q(`UPDATE users SET elo_pyramid = MAX(0, elo_pyramid - ?), wins_count_pyramid = MAX(0, wins_count_pyramid - 1), matches_count_pyramid = MAX(0, matches_count_pyramid - 1) WHERE id = ?`)
+              .run(m.delta, oppId);
+          }
         } else {
-          // удаляемый проиграл — у противника добавили ЭЛО, забираем
-          q(`UPDATE users SET elo = MAX(0, elo - ?), wins_count = MAX(0, wins_count - 1), matches_count = MAX(0, matches_count - 1) WHERE id = ?`)
-            .run(m.delta, m.winner_id);
+          if (m.winner_id === target.id) {
+            // удаляемый выиграл пул — у противника (oppId) забрали elo, возвращаем
+            q(`UPDATE users SET elo = elo + ?, matches_count = MAX(0, matches_count - 1) WHERE id = ?`)
+              .run(m.delta, oppId);
+          } else {
+            // удаляемый проиграл пул — у победителя (oppId) добавили elo, забираем
+            q(`UPDATE users SET elo = MAX(0, elo - ?), wins_count = MAX(0, wins_count - 1), matches_count = MAX(0, matches_count - 1) WHERE id = ?`)
+              .run(m.delta, oppId);
+          }
         }
       }
       // Удалить все матчи (FK без CASCADE)
@@ -560,10 +571,18 @@ export default async function adminRoutes(app) {
     tx(() => {
       if (match.status === "confirmed" && match.winner_id && match.delta) {
         const loserId = match.winner_id === match.initiator_id ? match.opponent_id : match.initiator_id;
-        q(`UPDATE users SET elo = elo - ?, wins_count = MAX(0, wins_count - 1), matches_count = MAX(0, matches_count - 1) WHERE id = ?`)
-          .run(match.delta, match.winner_id);
-        q(`UPDATE users SET elo = elo + ?, matches_count = MAX(0, matches_count - 1) WHERE id = ?`)
-          .run(match.delta, loserId);
+        const isPyramid = match.discipline === "pyramid";
+        if (isPyramid) {
+          q(`UPDATE users SET elo_pyramid = MAX(0, elo_pyramid - ?), wins_count_pyramid = MAX(0, wins_count_pyramid - 1), matches_count_pyramid = MAX(0, matches_count_pyramid - 1) WHERE id = ?`)
+            .run(match.delta, match.winner_id);
+          q(`UPDATE users SET elo_pyramid = elo_pyramid + ?, matches_count_pyramid = MAX(0, matches_count_pyramid - 1) WHERE id = ?`)
+            .run(match.delta, loserId);
+        } else {
+          q(`UPDATE users SET elo = MAX(0, elo - ?), wins_count = MAX(0, wins_count - 1), matches_count = MAX(0, matches_count - 1) WHERE id = ?`)
+            .run(match.delta, match.winner_id);
+          q(`UPDATE users SET elo = elo + ?, matches_count = MAX(0, matches_count - 1) WHERE id = ?`)
+            .run(match.delta, loserId);
+        }
       }
       q(`UPDATE matches SET status = 'cancelled', resolved_at = ? WHERE id = ?`).run(now(), matchId);
       audit(req.user.id, null, `cancel_match:${matchId}:was_${match.status}`);
