@@ -247,15 +247,7 @@ try {
   }
 }
 
-// ── Сезон: гарантируем существование активного сезона (3 месяца) ──
-{
-  const SEASON_MS = 90 * 24 * 3600 * 1000;
-  const cur = db.prepare(`SELECT * FROM seasons ORDER BY id DESC LIMIT 1`).get();
-  if (!cur) {
-    const t = Date.now();
-    db.prepare(`INSERT INTO seasons (started_at, ends_at) VALUES (?, ?)`).run(t, t + SEASON_MS);
-  }
-}
+// Сезон создаётся вручную через админ-панель, автостарт отключён.
 
 // Синхронная транзакция: node:sqlite + единственный поток Node = отсутствие гонок.
 export function tx(fn) {
