@@ -1157,3 +1157,25 @@ body {
   background-clip: text;
   animation: shimmer 2.2s infinite linear;
 }
+
+
+/* ── RANK PROGRESS ───────────────────────────────────────── */
+.rank-progress-wrap {
+  padding: 8px 0 4px;
+}
+.rank-progress-label {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 12px; font-weight: 600; margin-bottom: 5px;
+}
+.rank-progress-track {
+  height: 4px; border-radius: 4px;
+  background: rgba(255,255,255,.1);
+  overflow: hidden;
+}
+.rank-progress-fill {
+  height: 100%; border-radius: 4px;
+  transition: width .5s cubic-bezier(.4,0,.2,1);
+}
+
+/* ── OB FIELD ERROR ──────────────────────────────────────── */
+.ob-field.err { box-shadow: 0 0 0 2px #FF453A55; }

@@ -148,6 +148,21 @@ for (const col of [
   `ALTER TABLE users ADD COLUMN peak_elo INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE users ADD COLUMN is_super INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE users ADD COLUMN banned INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE users ADD COLUMN contact_type TEXT NOT NULL DEFAULT 'telegram'`,
+]) {
+  try { db.exec(col); } catch { /* колонка уже есть */ }
+}
+
+// ── Миграции announcements ──────────────────────────────────────────────────
+for (const col of [
+  `ALTER TABLE announcements ADD COLUMN active INTEGER NOT NULL DEFAULT 1`,
+]) {
+  try { db.exec(col); } catch { /* колонка уже есть */ }
+}
+
+// ── Миграции seasons ────────────────────────────────────────────────────────
+for (const col of [
+  `ALTER TABLE seasons ADD COLUMN closed INTEGER NOT NULL DEFAULT 0`,
 ]) {
   try { db.exec(col); } catch { /* колонка уже есть */ }
 }

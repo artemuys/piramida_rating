@@ -16,8 +16,27 @@ export function Rating({ navigate }) {
   if (!data) return <Spinner />;
 
   const inTop = data.top.some((p) => p.id === me.id);
+  const season = data.season;
+  const seasonEndStr = season
+    ? new Date(season.endsAt).toLocaleDateString("ru-RU", { day: "numeric", month: "numeric", year: "numeric" })
+    : null;
 
   return (
+    <>
+    {season && (
+      <div className="card" style={{ padding: "14px 20px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+          <span style={{ fontSize: 18 }}>🏆</span>
+          <span style={{ fontWeight: 700, fontSize: 15 }}>Сезон #{season.id}</span>
+          <span style={{ marginLeft: "auto", fontSize: 13, color: "#FF9F0A", fontWeight: 600 }}>
+            Конец: {seasonEndStr}
+          </span>
+        </div>
+        <div style={{ fontSize: 12, color: "rgba(255,255,255,.5)", lineHeight: 1.55 }}>
+          После окончания сезона эло сбрасывается с частичным сохранением (30% от разницы с 1000). Топ-3 игрока получают достижение «🏆 Хозяин сезона».
+        </div>
+      </div>
+    )}
     <div className="card">
       {data.top.map((p, i) => {
         const you = p.id === me.id;
@@ -52,6 +71,7 @@ export function Rating({ navigate }) {
       )}
       <div className="hint" style={{ paddingBottom: 14 }}>··· {t.nav.rating} · TOP-100 ···</div>
     </div>
+    </>
   );
 }
 

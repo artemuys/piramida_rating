@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api.js";
 import { useApp } from "../store.jsx";
-import { Ava, Crown, Spinner, Empty, RankBadge, LevelBar, StreakBadge, WinStreak } from "../components.jsx";
+import { Ava, Crown, Spinner, Empty, RankBadge, RankProgress, LevelBar, StreakBadge, WinStreak } from "../components.jsx";
 import { fmtDate, winPct } from "../util.js";
 import { haptic } from "../telegram.js";
 import { DuelModal } from "./Duels.jsx";
@@ -93,7 +93,9 @@ export function Player({ params, navigate }) {
             <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap", alignItems: "center" }}>
               <RankBadge elo={player.elo} />
               {player.streak !== 0 && <StreakBadge streak={player.streak} />}
+              {player.achPoints > 0 && <span style={{ fontSize: 12, color: "#FFD60A", background: "rgba(255,214,10,.12)", borderRadius: 8, padding: "3px 8px" }}>🏆 {player.achPoints} очк.</span>}
             </div>
+            <RankProgress elo={player.elo} />
             <div style={{ fontSize: 13, color: "rgba(255,255,255,.45)", marginTop: 5 }}>
               {t.idLabel} {player.id} · Пик: {player.peakElo} · #{player.place}
             </div>

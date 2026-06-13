@@ -39,6 +39,7 @@ export default async function feedRoutes(app) {
     const rows = q(
       `SELECT an.*, u.name AS author_name
        FROM announcements an JOIN users u ON u.id = an.author_id
+       WHERE an.active = 1
        ORDER BY an.created_at DESC LIMIT 10`
     ).all();
     return {

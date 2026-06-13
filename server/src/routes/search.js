@@ -35,12 +35,13 @@ export default async function searchRoutes(app) {
     const u = requireActivated(req);
     const t = now();
     const rows = q(
-      `SELECT id, name, elo, role, contact, search_disc, search_pays, search_started
+      `SELECT id, name, elo, role, contact, contact_type, search_disc, search_pays, search_started
        FROM users WHERE search_until > ? AND id != ? ORDER BY search_started ASC LIMIT 100`
     ).all(t, u.id);
     return {
       players: rows.map((r) => ({
         id: r.id, name: r.name, elo: r.elo, role: r.role, contact: r.contact,
+        contactType: r.contact_type ?? "telegram",
         disc: r.search_disc, pays: r.search_pays, startedAt: r.search_started,
       })),
     };

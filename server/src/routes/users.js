@@ -4,6 +4,15 @@ import { ApiError, requireUser } from "../errors.js";
 import { clean, now, publicUser } from "../util.js";
 import { rankOf, levelFromXp } from "../achievements.js";
 
+// Очки за достижения (зеркалим из фронтенда)
+const ACH_PTS = {
+  calibration:1,elite:50,new_peak_1100:15,new_peak_1200:20,new_peak_1300:30,
+  new_peak_1400:40,new_peak_1500:60,on_fire_5:10,inferno_7:20,immortal_10:40,
+  groundhog:15,rollercoaster:10,own_atmo:10,headhunter:20,extrovert:25,
+  veteran_20:5,veteran_50:10,veteran_100:20,veteran_200:30,veteran_500:50,
+  veteran_1000:100,bad_day:5,main_donor:5,tried:5,phoenix:15,
+};
+
 function serializeMe(u) {
   const t = now();
   const place = q(`SELECT COUNT(*) + 1 AS p FROM users WHERE elo > ?`).get(u.elo).p;
@@ -13,10 +22,13 @@ function serializeMe(u) {
   const rank = rankOf(u.elo);
   const xp = u.xp ?? 0;
   const level = levelFromXp(xp);
+  const achPtsRows = q(`SELECT code FROM achievements WHERE user_id = ?`).all(u.id);
+  const achPoints = achPtsRows.reduce((sum, r) => sum + (ACH_PTS[r.code] ?? 0), 0);
   return {
     id: u.id,
     name: u.name,
     contact: u.contact,
+    contactType: u.contact_type ?? "telegram",
     lang: u.lang,
     role: u.role,
     isSuper: !!u.is_super,
@@ -35,6 +47,7 @@ function serializeMe(u) {
     peakElo: u.peak_elo ?? u.elo,
     unseenAchievements: unseenAch,
     pendingDuels,
+    achPoints,
     isActivated: u.activated_until > t,
     activatedUntil: u.activated_until,
     isCheckedIn: u.checked_in_until > t,
@@ -53,8 +66,9 @@ const onboardSchema = {
     required: ["name", "contact", "lang"],
     additionalProperties: false,
     properties: {
-      name: { type: "string", minLength: 1, maxLength: 80 },
+      name: { type: "string", minLength: 2, maxLength: 40 },
       contact: { type: "string", minLength: 1, maxLength: 120 },
+      contactType: { type: "string", enum: ["telegram", "phone"] },
       lang: { type: "string", enum: ["en", "pl", "uk", "ru"] },
       prefDisc: { type: "integer", minimum: 0, maximum: 2 },
       prefPays: { type: "integer", minimum: 0, maximum: 1 },
@@ -67,8 +81,8 @@ const patchMeSchema = {
     type: "object",
     additionalProperties: false,
     properties: {
-      name: { type: "string", minLength: 1, maxLength: 80 },
       contact: { type: "string", maxLength: 120 },
+      contactType: { type: "string", enum: ["telegram", "phone"] },
       lang: { type: "string", enum: ["en", "pl", "uk", "ru"] },
       prefDisc: { type: "integer", minimum: 0, maximum: 2 },
       prefPays: { type: "integer", minimum: 0, maximum: 1 },
@@ -86,14 +100,16 @@ export default async function usersRoutes(app) {
     const name = clean(req.body.name, 40);
     const contact = clean(req.body.contact, 60);
     if (name.length < 2) throw new ApiError(400, "validation");
+    if (!/^[\p{L}\-]{2,}$/u.test(name)) throw new ApiError(400, "invalid_name");
     if (contact.length < 2) throw new ApiError(400, "validation");
+    const contactType = req.body.contactType ?? "telegram";
 
     const role = config.adminTgIds.includes(req.tgUser.id) ? "admin" : "user";
     const r = q(
-      `INSERT INTO users (tg_id, role, name, contact, lang, pref_disc, pref_pays, elo, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO users (tg_id, role, name, contact, contact_type, lang, pref_disc, pref_pays, elo, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
-      req.tgUser.id, role, name, contact, req.body.lang,
+      req.tgUser.id, role, name, contact, contactType, req.body.lang,
       req.body.prefDisc ?? 2, req.body.prefPays ?? 0, config.ELO_START, now()
     );
     const me = q(`SELECT * FROM users WHERE id = ?`).get(Number(r.lastInsertRowid));
@@ -105,11 +121,11 @@ export default async function usersRoutes(app) {
 
   app.patch("/me", { schema: patchMeSchema }, (req) => {
     const u = requireUser(req);
-    const name = req.body.name !== undefined ? clean(req.body.name, 40) : u.name;
     const contact = req.body.contact !== undefined ? clean(req.body.contact, 60) : u.contact;
-    if (name.length < 2) throw new ApiError(400, "validation");
-    q(`UPDATE users SET name = ?, contact = ?, lang = ?, pref_disc = ?, pref_pays = ? WHERE id = ?`).run(
-      name, contact,
+    const contactType = req.body.contactType ?? u.contact_type ?? "telegram";
+    q(`UPDATE users SET contact = ?, contact_type = ?, lang = ?, pref_disc = ?, pref_pays = ? WHERE id = ?`).run(
+      contact,
+      contactType,
       req.body.lang ?? u.lang,
       req.body.prefDisc ?? u.pref_disc,
       req.body.prefPays ?? u.pref_pays,
@@ -132,11 +148,13 @@ export default async function usersRoutes(app) {
       };
     }
     const place = q(`SELECT COUNT(*) + 1 AS p FROM users WHERE elo > ?`).get(u.elo).p;
+    const season = q(`SELECT * FROM seasons WHERE closed = 0 OR closed IS NULL ORDER BY id DESC LIMIT 1`).get();
     return {
       top: ratingCache.data.map((r) => ({
         id: r.id, name: r.name, elo: r.elo, role: r.role,
       })),
       me: { id: u.id, name: u.name, elo: u.elo, place, role: u.role },
+      season: season ? { id: season.id, startedAt: season.started_at, endsAt: season.ends_at } : null,
     };
   });
 
@@ -182,10 +200,14 @@ export default async function usersRoutes(app) {
     const xp = p.xp ?? 0;
     const level = levelFromXp(xp);
 
+    const pAchPtsRows = q(`SELECT code FROM achievements WHERE user_id = ?`).all(id);
+    const pAchPoints = pAchPtsRows.reduce((sum, r) => sum + (ACH_PTS[r.code] ?? (r.code.startsWith("season_master_") ? 100 : 0)), 0);
+
     return {
       player: {
         ...publicUser(p),
         contact: u.activated_until > t ? p.contact : null,
+        contactType: p.contact_type ?? "telegram",
         rank,
         xp,
         level,
@@ -193,6 +215,7 @@ export default async function usersRoutes(app) {
         bestStreak: p.best_streak ?? 0,
         peakElo: p.peak_elo ?? p.elo,
         place,
+        achPoints: pAchPoints,
       },
       isFavorite,
       h2h: h2h.map((m) => {

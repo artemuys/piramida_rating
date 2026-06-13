@@ -4,6 +4,7 @@ import { useApp } from "../store.jsx";
 import { Spinner, Empty } from "../components.jsx";
 
 export const ACH_META = {
+  season_master: { icon: "🏆", label: "Хозяин сезона", desc: "Топ-3 по итогам сезона", pts: 100 },
   calibration:   { icon: "🎯", label: "Калибровка пройдена",     desc: "Сыграть первые 10 матчей",                    pts: 5  },
   elite:         { icon: "👑", label: "Элита",                   desc: "Войти в топ-3 клуба по рейтингу",             pts: 50 },
   new_peak_1100: { icon: "📈", label: "Новый пик · 1100",        desc: "Достичь рейтинга 1100",                       pts: 15 },
@@ -31,8 +32,14 @@ export const ACH_META = {
   phoenix:       { icon: "🦅", label: "Феникс",                  desc: "Выиграть после 4+ поражений подряд",          pts: 15 },
 };
 
+export function getAchMeta(code) {
+  if (ACH_META[code]) return ACH_META[code];
+  if (/^season_master_\d+$/.test(code)) return { icon: "🏆", label: "Хозяин сезона", desc: "Топ-3 по итогам сезона", pts: 100 };
+  return { icon: "❓", label: code, desc: "", pts: 0 };
+}
+
 function AchCard({ code, earnedAt, locked }) {
-  const meta = ACH_META[code] || { icon: "❓", label: code, desc: "", pts: 0 };
+  const meta = getAchMeta(code);
   return (
     <div className={`ach-card${locked ? " ach-locked" : ""}`}>
       <div className="ach-icon">{meta.icon}</div>
@@ -65,10 +72,12 @@ export function Achievements({ playerId }) {
 
   const earned = new Map(achs.map(a => [a.code, a.earnedAt]));
   const allCodes = Object.keys(ACH_META);
-  const earnedList = allCodes.filter(c => earned.has(c));
+  // Season master achievements earned but not in ACH_META keys
+  const extraEarned = achs.filter(a => !ACH_META[a.code] && /^season_master_\d+$/.test(a.code)).map(a => a.code);
+  const earnedList = [...allCodes.filter(c => earned.has(c)), ...extraEarned];
   const lockedList = allCodes.filter(c => !earned.has(c));
 
-  const totalPts = earnedList.reduce((sum, c) => sum + (ACH_META[c]?.pts ?? 0), 0);
+  const totalPts = earnedList.reduce((sum, c) => sum + (getAchMeta(c)?.pts ?? 0), 0);
   const maxPts   = allCodes.reduce((sum, c) => sum + (ACH_META[c]?.pts ?? 0), 0);
 
   return (

@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { useApp } from "../store.jsx";
-import { Ava, Crown, RulesModal, Spinner, Stats, Empty, RankBadge, LevelBar, StreakBadge, StreakProgress } from "../components.jsx";
+import { Ava, Crown, RulesModal, Spinner, Stats, Empty, RankBadge, RankProgress, LevelBar, StreakBadge, StreakProgress } from "../components.jsx";
 import { useNow, fmtElapsed, fmtDateTime, fmtAgo } from "../util.js";
 import { haptic } from "../telegram.js";
-import { ACH_META } from "./Achievements.jsx";
+import { getAchMeta } from "./Achievements.jsx";
 
 function NavRow({ icon, iconBg, label, value, onClick, locked, badge }) {
   return (
@@ -102,7 +102,7 @@ function SearchBlock() {
 }
 
 function AchFeedModal({ code, onClose }) {
-  const meta = ACH_META[code] || { icon: "🏅", label: code, desc: "" };
+  const meta = getAchMeta(code);
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
@@ -150,7 +150,7 @@ function LiveFeed({ navigate }) {
         );
       }
       case "achievement": {
-        const meta = ACH_META[d.code] || { icon: "🏅", label: d.code };
+        const meta = getAchMeta(d.code);
         const actorName = d.name || item.actorName;
         return (
           <div className="feed-text">
@@ -220,14 +220,16 @@ export function Home({ navigate }) {
         <div className="user-hero">
           <div className="user-hero-text">
             <div className="user-name">
-              👋 {me.name.split(" ")[0]}
+              {me.name.split(" ")[0]}
               {me.role === "admin" && !me.isSuper && <span className="badge badge-yellow">👑 admin</span>}
               {me.isSuper && <span className="badge badge-yellow">⚡ super</span>}
               {me.searching && <span className="badge badge-green">{t.nav.searching}</span>}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
               <RankBadge elo={me.elo} />
+              {me.achPoints > 0 && <span style={{ fontSize: 12, color: "#FFD60A", background: "rgba(255,214,10,.12)", borderRadius: 8, padding: "3px 8px" }}>🏆 {me.achPoints} очк.</span>}
             </div>
+            <RankProgress elo={me.elo} />
             <StreakProgress streak={me.streak} />
             <div className="user-sub" style={{ marginTop: 6 }}>
               {t.idLabel} {me.id}

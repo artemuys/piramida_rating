@@ -9,11 +9,15 @@ export function Onboarding() {
   const [step, setStep] = useState(0); // 0 = язык (всегда начинаем с выбора языка)
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
+  const [contactType, setContactType] = useState("telegram");
   const [disc, setDisc] = useState(2);
   const [pays, setPays] = useState(0);
   const [chosen, setChosen] = useState(obLang);
   const [rulesAccepted, setRulesAccepted] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  const NAME_RE = /^[\p{L}\-]{2,}$/u;
+  const nameValid = NAME_RE.test(name.trim());
 
   const t = getT(chosen || "ru");
 
@@ -31,6 +35,7 @@ export function Onboarding() {
       await api.post("/auth/onboard", {
         name: name.trim(),
         contact: contact.trim(),
+        contactType,
         lang: chosen,
         prefDisc: disc,
         prefPays: pays,
@@ -86,15 +91,19 @@ export function Onboarding() {
       content: (
         <>
           <input
-            className={`ob-field${name.trim().length >= 2 ? " ok" : ""}`}
+            className={`ob-field${nameValid ? " ok" : name.trim().length > 0 ? " err" : ""}`}
             placeholder={t.step0.placeholder}
             value={name}
             onChange={(e) => setName(e.target.value)}
             autoFocus
             maxLength={40}
           />
-          <div className="ob-field-hint">{t.step0.hint}</div>
-          <button className="ob-btn" disabled={name.trim().length < 2} onClick={() => setStep(2)}>{t.step0.next}</button>
+          <div className="ob-field-hint">
+            {name.trim().length > 0 && !nameValid
+              ? "⚠️ Только буквы, без пробелов и спецсимволов, минимум 2 символа"
+              : t.step0.hint}
+          </div>
+          <button className="ob-btn" disabled={!nameValid} onClick={() => setStep(2)}>{t.step0.next}</button>
         </>
       ),
     },
@@ -102,15 +111,23 @@ export function Onboarding() {
       emoji: "💬", title: t.step1.title, sub: t.step1.sub,
       content: (
         <>
+          <div className="tog-g" style={{ marginBottom: 14 }}>
+            <button className={`tog${contactType === "telegram" ? " on" : ""}`} onClick={() => { setContactType("telegram"); setContact(""); }}>Telegram</button>
+            <button className={`tog${contactType === "phone" ? " on" : ""}`} onClick={() => { setContactType("phone"); setContact(""); }}>Телефон</button>
+          </div>
           <input
             className={`ob-field${contact.trim().length >= 2 ? " ok" : ""}`}
-            placeholder={t.step1.placeholder}
+            placeholder={contactType === "telegram" ? "@username" : "+7 (___) ___-__-__"}
             value={contact}
             onChange={(e) => setContact(e.target.value)}
             autoFocus
             maxLength={60}
           />
-          <div className="ob-field-hint">{t.step1.hint}</div>
+          <div className="ob-field-hint">
+            {contactType === "telegram"
+              ? "Ваш Telegram @username — другие игроки смогут написать вам напрямую."
+              : "Номер телефона — виден только активированным игрокам клуба."}
+          </div>
           <button className="ob-btn" disabled={contact.trim().length < 2} onClick={() => setStep(3)}>{t.step1.next}</button>
         </>
       ),

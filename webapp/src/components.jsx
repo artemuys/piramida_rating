@@ -1,6 +1,6 @@
 import { Component, useEffect, useRef, useState } from "react";
 import { useApp } from "./store.jsx";
-import { avaColor, initials, winPct, rankOf, xpProgress, levelFromXp, xpToReachLevel } from "./util.js";
+import { avaColor, initials, winPct, rankOf, RANKS, xpProgress, levelFromXp, xpToReachLevel } from "./util.js";
 
 export function Ava({ id, name, size = 38 }) {
   const color = avaColor(id);
@@ -47,6 +47,37 @@ export function RankBadge({ elo, size = "md" }) {
     >
       {rank.emoji} {rank.label}
     </span>
+  );
+}
+
+export function RankProgress({ elo }) {
+  const rank = rankOf(elo);
+  if (!rank.next) {
+    return (
+      <div className="rank-progress-wrap">
+        <div className="rank-progress-label">
+          <span>{rank.emoji} {rank.label}</span>
+          <span style={{ color: rank.color }}>Максимальный ранг</span>
+        </div>
+        <div className="rank-progress-track">
+          <div className="rank-progress-fill" style={{ width: "100%", background: rank.color }} />
+        </div>
+      </div>
+    );
+  }
+  const nextRank = RANKS.find(r => r.min === rank.next);
+  const pct = Math.round(((elo - rank.min) / (rank.next - rank.min)) * 100);
+  const toNext = rank.next - elo;
+  return (
+    <div className="rank-progress-wrap">
+      <div className="rank-progress-label">
+        <span style={{ color: rank.color }}>{rank.emoji} {rank.label}</span>
+        <span style={{ color: "rgba(255,255,255,.4)", fontSize: 12 }}>до {nextRank?.emoji} {nextRank?.label}: +{toNext} эло</span>
+      </div>
+      <div className="rank-progress-track">
+        <div className="rank-progress-fill" style={{ width: `${pct}%`, background: rank.color }} />
+      </div>
+    </div>
   );
 }
 
@@ -261,11 +292,10 @@ export function MatchResultModal({ match, xpBefore, onClose }) {
 }
 
 export function AchievementUnlockModal({ code, earnedAt, onClose }) {
-  const { ACH_META_IMPORT } = {};
-  // Import inline to avoid circular deps
   const META = {
     calibration:   { icon: "🎯", label: "Калибровка пройдена",     desc: "Сыграть первые 10 матчей" },
     elite:         { icon: "👑", label: "Элита",                   desc: "Войти в топ-3 клуба по рейтингу" },
+    season_master: { icon: "🏆", label: "Хозяин сезона",           desc: "Топ-3 по итогам сезона" },
     new_peak_1100: { icon: "📈", label: "Новый пик · 1100",        desc: "Достичь рейтинга 1100" },
     new_peak_1200: { icon: "📈", label: "Новый пик · 1200",        desc: "Достичь рейтинга 1200" },
     new_peak_1300: { icon: "📈", label: "Новый пик · 1300",        desc: "Достичь рейтинга 1300" },
@@ -290,7 +320,7 @@ export function AchievementUnlockModal({ code, earnedAt, onClose }) {
     tried:         { icon: "🙏", label: "Ты пытался",              desc: "Проиграть игроку из топ-3" },
     phoenix:       { icon: "🦅", label: "Феникс",                  desc: "Выиграть после 4+ поражений подряд" },
   };
-  const meta = META[code] || { icon: "🏅", label: code, desc: "" };
+  const meta = META[code] || (/^season_master_/.test(code) ? { icon: "🏆", label: "Хозяин сезона", desc: "Топ-3 по итогам сезона" } : { icon: "🏅", label: code, desc: "" });
   return (
     <div className="modal-overlay center ach-unlock-overlay" onClick={onClose}>
       <div className="modal ach-unlock-modal" onClick={e => e.stopPropagation()}>
