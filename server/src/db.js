@@ -150,6 +150,29 @@ for (const col of [
   `ALTER TABLE users ADD COLUMN banned INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE users ADD COLUMN contact_type TEXT NOT NULL DEFAULT 'telegram'`,
   `ALTER TABLE users ADD COLUMN name_change_allowed INTEGER NOT NULL DEFAULT 0`,
+  // Дисциплина и статистика пирамиды (пул = существующие колонки)
+  `ALTER TABLE users ADD COLUMN active_discipline TEXT NOT NULL DEFAULT 'pool'`,
+  `ALTER TABLE users ADD COLUMN elo_pyramid INTEGER NOT NULL DEFAULT 1000`,
+  `ALTER TABLE users ADD COLUMN matches_count_pyramid INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE users ADD COLUMN wins_count_pyramid INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE users ADD COLUMN xp_pyramid INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE users ADD COLUMN streak_pyramid INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE users ADD COLUMN best_streak_pyramid INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE users ADD COLUMN peak_elo_pyramid INTEGER NOT NULL DEFAULT 0`,
+]) {
+  try { db.exec(col); } catch { /* колонка уже есть */ }
+}
+
+// ── Миграции matches: дисциплина матча ─────────────────────────────────────
+for (const col of [
+  `ALTER TABLE matches ADD COLUMN discipline TEXT NOT NULL DEFAULT 'pool'`,
+]) {
+  try { db.exec(col); } catch { /* колонка уже есть */ }
+}
+
+// ── Миграции feed: дисциплина события ──────────────────────────────────────
+for (const col of [
+  `ALTER TABLE feed ADD COLUMN discipline TEXT NOT NULL DEFAULT 'pool'`,
 ]) {
   try { db.exec(col); } catch { /* колонка уже есть */ }
 }

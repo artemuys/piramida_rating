@@ -13,26 +13,46 @@ function enrichAch(r) {
 }
 
 export default async function recordsRoutes(app) {
-  // GET /achievements/me — мои ачивки
+  // GET /achievements/me — мои ачивки (по дисциплине)
   app.get("/achievements/me", (req) => {
     const u = requireUser(req);
-    const rows = q(`SELECT code, earned_at, seen FROM achievements WHERE user_id = ? ORDER BY earned_at DESC`).all(u.id);
-    // Помечаем все просмотренными
-    q(`UPDATE achievements SET seen = 1 WHERE user_id = ? AND seen = 0`).run(u.id);
+    const disc = u.active_discipline ?? 'pool';
+    const isPyramid = disc === 'pyramid';
+    const rows = isPyramid
+      ? q(`SELECT code, earned_at, seen FROM achievements WHERE user_id = ? AND code LIKE 'p:%' ORDER BY earned_at DESC`).all(u.id)
+      : q(`SELECT code, earned_at, seen FROM achievements WHERE user_id = ? AND code NOT LIKE 'p:%' ORDER BY earned_at DESC`).all(u.id);
+    // Помечаем просмотренными только текущей дисциплины
+    if (isPyramid) {
+      q(`UPDATE achievements SET seen = 1 WHERE user_id = ? AND seen = 0 AND code LIKE 'p:%'`).run(u.id);
+    } else {
+      q(`UPDATE achievements SET seen = 1 WHERE user_id = ? AND seen = 0 AND code NOT LIKE 'p:%'`).run(u.id);
+    }
     return { achievements: rows.map(r => enrichAch(r)) };
   });
 
-  // GET /achievements/:id — ачивки другого игрока
+  // GET /achievements/:id — ачивки другого игрока (по дисциплине зрителя)
   app.get("/achievements/:id", (req) => {
-    requireUser(req);
+    const u = requireUser(req);
+    const disc = u.active_discipline ?? 'pool';
+    const isPyramid = disc === 'pyramid';
     const id = Number(req.params.id) || 0;
-    const rows = q(`SELECT code, earned_at FROM achievements WHERE user_id = ? ORDER BY earned_at DESC`).all(id);
+    const rows = isPyramid
+      ? q(`SELECT code, earned_at FROM achievements WHERE user_id = ? AND code LIKE 'p:%' ORDER BY earned_at DESC`).all(id)
+      : q(`SELECT code, earned_at FROM achievements WHERE user_id = ? AND code NOT LIKE 'p:%' ORDER BY earned_at DESC`).all(id);
     return { achievements: rows.map(r => enrichAch(r)) };
   });
 
   // GET /records — клубные рекорды
   app.get("/records", (req) => {
-    requireUser(req);
+    const u = requireUser(req);
+    const disc = u.active_discipline ?? 'pool';
+    const isPyramid = disc === 'pyramid';
+    const streakCol   = isPyramid ? 'best_streak_pyramid'  : 'best_streak';
+    const peakEloCol  = isPyramid ? 'peak_elo_pyramid'     : 'peak_elo';
+    const matchesCol  = isPyramid ? 'matches_count_pyramid': 'matches_count';
+    const winsCol     = isPyramid ? 'wins_count_pyramid'   : 'wins_count';
+    const eloCol      = isPyramid ? 'elo_pyramid'          : 'elo';
+
     const t = now();
     const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
     const weekDay = new Date().getDay();
@@ -42,25 +62,25 @@ export default async function recordsRoutes(app) {
 
     // 🔥 Самая длинная серия побед
     const bestStreak = q(
-      `SELECT id, name, best_streak FROM users ORDER BY best_streak DESC LIMIT 1`
+      `SELECT id, name, ${streakCol} AS best_streak FROM users ORDER BY ${streakCol} DESC LIMIT 1`
     ).get();
 
     // 👑 Исторический пик рейтинга
     const peakElo = q(
-      `SELECT id, name, peak_elo FROM users ORDER BY peak_elo DESC LIMIT 1`
+      `SELECT id, name, ${peakEloCol} AS peak_elo FROM users ORDER BY ${peakEloCol} DESC LIMIT 1`
     ).get();
 
     // 💼 Главный ветеран
     const veteran = q(
-      `SELECT id, name, matches_count FROM users ORDER BY matches_count DESC LIMIT 1`
+      `SELECT id, name, ${matchesCol} AS matches_count FROM users ORDER BY ${matchesCol} DESC LIMIT 1`
     ).get();
 
     // 🤝 Самое частое противостояние
     const derby = q(
       `SELECT MIN(initiator_id, opponent_id) AS a, MAX(initiator_id, opponent_id) AS b, COUNT(*) AS c
-       FROM matches WHERE status='confirmed'
+       FROM matches WHERE status='confirmed' AND discipline=?
        GROUP BY a, b ORDER BY c DESC LIMIT 1`
-    ).get();
+    ).get(disc);
     let derbyRecord = null;
     if (derby) {
       const ua = q(`SELECT id, name FROM users WHERE id = ?`).get(derby.a);
@@ -71,22 +91,13 @@ export default async function recordsRoutes(app) {
     // ⚡ Текущий месяц
     const monthMs = monthStart.getTime();
 
-    const monthMatches = q(
-      `SELECT CASE WHEN initiator_id = sub.uid THEN initiator_id ELSE opponent_id END AS uid,
-              COUNT(*) AS c
-       FROM matches,
-         (SELECT id AS uid FROM users) sub
-       WHERE status='confirmed' AND resolved_at>=? AND (initiator_id=sub.uid OR opponent_id=sub.uid)
-       GROUP BY sub.uid ORDER BY c DESC LIMIT 1`
-    ).get(monthMs);
-    // Simpler query:
     const monthMost = q(
       `SELECT uid, COUNT(*) AS c FROM (
-         SELECT initiator_id AS uid FROM matches WHERE status='confirmed' AND resolved_at>=?
+         SELECT initiator_id AS uid FROM matches WHERE status='confirmed' AND discipline=? AND resolved_at>=?
          UNION ALL
-         SELECT opponent_id AS uid FROM matches WHERE status='confirmed' AND resolved_at>=?
+         SELECT opponent_id AS uid FROM matches WHERE status='confirmed' AND discipline=? AND resolved_at>=?
        ) GROUP BY uid ORDER BY c DESC LIMIT 1`
-    ).get(monthMs, monthMs);
+    ).get(disc, monthMs, disc, monthMs);
     let monthMostPlayer = null;
     if (monthMost) {
       const pu = q(`SELECT id, name FROM users WHERE id = ?`).get(monthMost.uid);
@@ -98,13 +109,13 @@ export default async function recordsRoutes(app) {
       `SELECT uid, SUM(delta_val) AS total_gain FROM (
          SELECT initiator_id AS uid,
            CASE WHEN winner_id = initiator_id THEN delta ELSE -delta END AS delta_val
-         FROM matches WHERE status='confirmed' AND resolved_at>=?
+         FROM matches WHERE status='confirmed' AND discipline=? AND resolved_at>=?
          UNION ALL
          SELECT opponent_id AS uid,
            CASE WHEN winner_id = opponent_id THEN delta ELSE -delta END AS delta_val
-         FROM matches WHERE status='confirmed' AND resolved_at>=?
+         FROM matches WHERE status='confirmed' AND discipline=? AND resolved_at>=?
        ) GROUP BY uid ORDER BY total_gain DESC LIMIT 1`
-    ).get(monthMs, monthMs);
+    ).get(disc, monthMs, disc, monthMs);
     let monthGainer = null;
     if (monthGain && monthGain.total_gain > 0) {
       const pu = q(`SELECT id, name FROM users WHERE id = ?`).get(monthGain.uid);
@@ -116,13 +127,13 @@ export default async function recordsRoutes(app) {
       `SELECT uid, SUM(delta_val) AS total_loss FROM (
          SELECT initiator_id AS uid,
            CASE WHEN winner_id = initiator_id THEN delta ELSE -delta END AS delta_val
-         FROM matches WHERE status='confirmed' AND resolved_at>=?
+         FROM matches WHERE status='confirmed' AND discipline=? AND resolved_at>=?
          UNION ALL
          SELECT opponent_id AS uid,
            CASE WHEN winner_id = opponent_id THEN delta ELSE -delta END AS delta_val
-         FROM matches WHERE status='confirmed' AND resolved_at>=?
+         FROM matches WHERE status='confirmed' AND discipline=? AND resolved_at>=?
        ) GROUP BY uid ORDER BY total_loss ASC LIMIT 1`
-    ).get(monthMs, monthMs);
+    ).get(disc, monthMs, disc, monthMs);
     let monthDonorPlayer = null;
     if (monthDonor && monthDonor.total_loss < 0) {
       const pu = q(`SELECT id, name FROM users WHERE id = ?`).get(monthDonor.uid);
@@ -132,11 +143,11 @@ export default async function recordsRoutes(app) {
     // ⚔️ Охотник за головами месяца
     const monthHunter = q(
       `SELECT uid, COUNT(DISTINCT opp) AS uniq FROM (
-         SELECT initiator_id AS uid, opponent_id AS opp FROM matches WHERE status='confirmed' AND resolved_at>=?
+         SELECT initiator_id AS uid, opponent_id AS opp FROM matches WHERE status='confirmed' AND discipline=? AND resolved_at>=?
          UNION ALL
-         SELECT opponent_id AS uid, initiator_id AS opp FROM matches WHERE status='confirmed' AND resolved_at>=?
+         SELECT opponent_id AS uid, initiator_id AS opp FROM matches WHERE status='confirmed' AND discipline=? AND resolved_at>=?
        ) GROUP BY uid ORDER BY uniq DESC LIMIT 1`
-    ).get(monthMs, monthMs);
+    ).get(disc, monthMs, disc, monthMs);
     let monthHunterPlayer = null;
     if (monthHunter) {
       const pu = q(`SELECT id, name FROM users WHERE id = ?`).get(monthHunter.uid);
@@ -150,13 +161,13 @@ export default async function recordsRoutes(app) {
       `SELECT uid, SUM(delta_val) AS gain FROM (
          SELECT initiator_id AS uid,
            CASE WHEN winner_id = initiator_id THEN delta ELSE -delta END AS delta_val
-         FROM matches WHERE status='confirmed' AND resolved_at>=?
+         FROM matches WHERE status='confirmed' AND discipline=? AND resolved_at>=?
          UNION ALL
          SELECT opponent_id AS uid,
            CASE WHEN winner_id = opponent_id THEN delta ELSE -delta END AS delta_val
-         FROM matches WHERE status='confirmed' AND resolved_at>=?
+         FROM matches WHERE status='confirmed' AND discipline=? AND resolved_at>=?
        ) GROUP BY uid ORDER BY gain DESC LIMIT 1`
-    ).get(weekMs, weekMs);
+    ).get(disc, weekMs, disc, weekMs);
     let weekGainer = null;
     if (weekGain && weekGain.gain > 0) {
       const pu = q(`SELECT id, name FROM users WHERE id = ?`).get(weekGain.uid);
@@ -165,11 +176,11 @@ export default async function recordsRoutes(app) {
 
     const weekMarathon = q(
       `SELECT uid, COUNT(*) AS c FROM (
-         SELECT initiator_id AS uid FROM matches WHERE status='confirmed' AND resolved_at>=?
+         SELECT initiator_id AS uid FROM matches WHERE status='confirmed' AND discipline=? AND resolved_at>=?
          UNION ALL
-         SELECT opponent_id AS uid FROM matches WHERE status='confirmed' AND resolved_at>=?
+         SELECT opponent_id AS uid FROM matches WHERE status='confirmed' AND discipline=? AND resolved_at>=?
        ) GROUP BY uid ORDER BY c DESC LIMIT 1`
-    ).get(weekMs, weekMs);
+    ).get(disc, weekMs, disc, weekMs);
     let weekMarathonPlayer = null;
     if (weekMarathon) {
       const pu = q(`SELECT id, name FROM users WHERE id = ?`).get(weekMarathon.uid);
@@ -178,9 +189,9 @@ export default async function recordsRoutes(app) {
 
     // 🦖 Непобедимый босс (winrate, мин 20 матчей)
     const boss = q(
-      `SELECT id, name, matches_count, wins_count,
-              CAST(wins_count AS REAL) / matches_count AS wr
-       FROM users WHERE matches_count >= 20
+      `SELECT id, name, ${matchesCol} AS matches_count, ${winsCol} AS wins_count,
+              CAST(${winsCol} AS REAL) / ${matchesCol} AS wr
+       FROM users WHERE ${matchesCol} >= 20
        ORDER BY wr DESC LIMIT 1`
     ).get();
     let bossPlayer = null;
@@ -197,11 +208,11 @@ export default async function recordsRoutes(app) {
        FROM matches m
        JOIN users wi ON wi.id = m.winner_id
        JOIN users lo ON lo.id = CASE WHEN m.winner_id = m.initiator_id THEN m.opponent_id ELSE m.initiator_id END
-       WHERE m.status = 'confirmed'
+       WHERE m.status = 'confirmed' AND m.discipline = ?
          AND ((m.winner_id = m.initiator_id AND m.initiator_elo_before < m.opponent_elo_before)
            OR (m.winner_id = m.opponent_id AND m.opponent_elo_before < m.initiator_elo_before))
        ORDER BY diff DESC LIMIT 1`
-    ).get();
+    ).get(disc);
     let upsetRecord = null;
     if (upset) {
       const loserElo = upset.winner_id === upset.initiator_id ? upset.opponent_elo_before : upset.initiator_elo_before;

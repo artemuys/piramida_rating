@@ -32,6 +32,7 @@ export function Settings() {
   const [disc, setDisc] = useState(me.prefDisc);
   const [pays, setPays] = useState(me.prefPays);
   const [lang, setLang] = useState(me.lang);
+  const [activeDiscipline, setActiveDiscipline] = useState(me.activeDiscipline ?? 'pool');
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [newName, setNewName] = useState("");
@@ -57,6 +58,7 @@ export function Settings() {
         lang,
         prefDisc: disc,
         prefPays: pays,
+        activeDiscipline,
       });
       localStorage.setItem("lang", lang);
       await refreshMe();
@@ -192,6 +194,27 @@ export function Settings() {
             ))}
           </div>
         </div>
+      </div>
+
+      <div className="card">
+        <div className="s-sect">{t.disc_switch?.label ?? "Дисциплина"}</div>
+        <div className="tog-wrap">
+          <div className="tog-g" style={{ width: "100%" }}>
+            <button
+              className={`tog${activeDiscipline === 'pool' ? " on" : ""}`}
+              onClick={() => setActiveDiscipline('pool')}
+            >
+              🎱 {t.disc_switch?.pool ?? "Пул"}
+            </button>
+            <button
+              className={`tog${activeDiscipline === 'pyramid' ? " on" : ""}`}
+              onClick={() => setActiveDiscipline('pyramid')}
+            >
+              🔺 {t.disc_switch?.pyramid ?? "Пирамида"}
+            </button>
+          </div>
+        </div>
+        <div className="s-hint">{t.disc_switch?.hint ?? "Пул и Пирамида полностью разделены — разные рейтинги, достижения и рекорды."}</div>
       </div>
 
       <div className="card">

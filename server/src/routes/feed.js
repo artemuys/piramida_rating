@@ -4,16 +4,18 @@ import { requireUser } from "../errors.js";
 import { now } from "../util.js";
 
 export default async function feedRoutes(app) {
-  // GET /feed — последние N событий в ленте
+  // GET /feed — последние N событий в ленте (по дисциплине пользователя)
   app.get("/feed", (req) => {
-    requireUser(req);
+    const u = requireUser(req);
+    const disc = u.active_discipline ?? 'pool';
     const rows = q(
       `SELECT f.*, a.name AS actor_name, b.name AS target_name
        FROM feed f
        LEFT JOIN users a ON a.id = f.actor_id
        LEFT JOIN users b ON b.id = f.target_id
+       WHERE f.discipline = ?
        ORDER BY f.created_at DESC LIMIT ?`
-    ).all(config.FEED_LIMIT);
+    ).all(disc, config.FEED_LIMIT);
 
     return {
       feed: rows.map(r => {

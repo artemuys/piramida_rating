@@ -15,15 +15,40 @@ const ACH_PTS = {
 
 function serializeMe(u) {
   const t = now();
-  const place = q(`SELECT COUNT(*) + 1 AS p FROM users WHERE elo > ?`).get(u.elo).p;
+  const disc = u.active_discipline ?? 'pool';
+  const isPyramid = disc === 'pyramid';
+
+  // Дисциплина-специфичные статы
+  const elo         = isPyramid ? (u.elo_pyramid          ?? 1000) : u.elo;
+  const matchesCount = isPyramid ? (u.matches_count_pyramid ?? 0)    : u.matches_count;
+  const winsCount   = isPyramid ? (u.wins_count_pyramid   ?? 0)    : u.wins_count;
+  const xp          = isPyramid ? (u.xp_pyramid           ?? 0)    : (u.xp ?? 0);
+  const streak      = isPyramid ? (u.streak_pyramid        ?? 0)    : (u.streak ?? 0);
+  const bestStreak  = isPyramid ? (u.best_streak_pyramid  ?? 0)    : (u.best_streak ?? 0);
+  const peakElo     = isPyramid ? (u.peak_elo_pyramid     ?? 1000) : (u.peak_elo ?? u.elo);
+
+  const eloCol = isPyramid ? 'elo_pyramid' : 'elo';
+  const place = q(`SELECT COUNT(*) + 1 AS p FROM users WHERE ${eloCol} > ?`).get(elo).p;
   const favoritesCount = q(`SELECT COUNT(*) AS c FROM favorites WHERE user_id = ?`).get(u.id).c;
-  const unseenAch = q(`SELECT COUNT(*) AS c FROM achievements WHERE user_id = ? AND seen = 0`).get(u.id).c;
+
+  // Непросмотренные ачивки текущей дисциплины
+  const unseenAch = isPyramid
+    ? q(`SELECT COUNT(*) AS c FROM achievements WHERE user_id = ? AND seen = 0 AND code LIKE 'p:%'`).get(u.id).c
+    : q(`SELECT COUNT(*) AS c FROM achievements WHERE user_id = ? AND seen = 0 AND code NOT LIKE 'p:%'`).get(u.id).c;
+
   const pendingDuels = q(`SELECT COUNT(*) AS c FROM duels WHERE opponent_id = ? AND status = 'open'`).get(u.id).c;
-  const rank = rankOf(u.elo);
-  const xp = u.xp ?? 0;
+  const rank = rankOf(elo);
   const level = levelFromXp(xp);
-  const achPtsRows = q(`SELECT code FROM achievements WHERE user_id = ?`).all(u.id);
-  const achPoints = achPtsRows.reduce((sum, r) => sum + (ACH_PTS[r.code] ?? 0), 0);
+
+  // Очки ачивок текущей дисциплины
+  const achPtsRows = isPyramid
+    ? q(`SELECT code FROM achievements WHERE user_id = ? AND code LIKE 'p:%'`).all(u.id)
+    : q(`SELECT code FROM achievements WHERE user_id = ? AND code NOT LIKE 'p:%'`).all(u.id);
+  const achPoints = achPtsRows.reduce((sum, r) => {
+    const baseCode = r.code.startsWith('p:') ? r.code.slice(2) : r.code;
+    return sum + (ACH_PTS[baseCode] ?? 0);
+  }, 0);
+
   return {
     id: u.id,
     name: u.name,
@@ -34,17 +59,18 @@ function serializeMe(u) {
     isSuper: !!u.is_super,
     prefDisc: u.pref_disc,
     prefPays: u.pref_pays,
-    elo: u.elo,
-    matchesCount: u.matches_count,
-    winsCount: u.wins_count,
+    activeDiscipline: disc,
+    elo,
+    matchesCount,
+    winsCount,
     place,
     favoritesCount,
     rank,
     xp,
     level,
-    streak: u.streak ?? 0,
-    bestStreak: u.best_streak ?? 0,
-    peakElo: u.peak_elo ?? u.elo,
+    streak,
+    bestStreak,
+    peakElo,
     nameChangeAllowed: !!u.name_change_allowed,
     unseenAchievements: unseenAch,
     pendingDuels,
@@ -88,11 +114,12 @@ const patchMeSchema = {
       lang: { type: "string", enum: ["en", "pl", "uk", "ru"] },
       prefDisc: { type: "integer", minimum: 0, maximum: 2 },
       prefPays: { type: "integer", minimum: 0, maximum: 1 },
+      activeDiscipline: { type: "string", enum: ["pool", "pyramid"] },
     },
   },
 };
 
-let ratingCache = { at: 0, data: null };
+let ratingCache = { pool: { at: 0, data: null }, pyramid: { at: 0, data: null } };
 
 export default async function usersRoutes(app) {
   // ── Онбординг ──────────────────────────────────────────────
@@ -133,37 +160,44 @@ export default async function usersRoutes(app) {
       q(`UPDATE users SET name = ?, name_change_allowed = 0 WHERE id = ?`).run(newName, u.id);
     }
 
-    q(`UPDATE users SET contact = ?, contact_type = ?, lang = ?, pref_disc = ?, pref_pays = ? WHERE id = ?`).run(
+    q(`UPDATE users SET contact = ?, contact_type = ?, lang = ?, pref_disc = ?, pref_pays = ?, active_discipline = ? WHERE id = ?`).run(
       contact,
       contactType,
       req.body.lang ?? u.lang,
       req.body.prefDisc ?? u.pref_disc,
       req.body.prefPays ?? u.pref_pays,
+      req.body.activeDiscipline ?? u.active_discipline ?? 'pool',
       u.id
     );
     return { me: serializeMe(q(`SELECT * FROM users WHERE id = ?`).get(u.id)) };
   });
 
-  // ── Рейтинг клуба (кэш 5 секунд — при 300 онлайн это важно) ─
+  // ── Рейтинг клуба (кэш 5 секунд, разделён по дисциплинам) ──
   app.get("/rating", (req) => {
     const u = requireUser(req);
+    const disc = u.active_discipline ?? 'pool';
+    const isPyramid = disc === 'pyramid';
+    const eloCol = isPyramid ? 'elo_pyramid' : 'elo';
+    const mcCol  = isPyramid ? 'matches_count_pyramid' : 'matches_count';
     const t = now();
-    if (!ratingCache.data || t - ratingCache.at > 5000) {
-      ratingCache = {
+    const cache = ratingCache[disc];
+    if (!cache.data || t - cache.at > 5000) {
+      ratingCache[disc] = {
         at: t,
         data: q(
-          `SELECT id, name, elo, role, matches_count, wins_count
-           FROM users ORDER BY elo DESC, matches_count DESC, id ASC LIMIT ?`
+          `SELECT id, name, ${eloCol} AS elo, role, ${mcCol} AS matches_count
+           FROM users ORDER BY ${eloCol} DESC, ${mcCol} DESC, id ASC LIMIT ?`
         ).all(config.RATING_TOP),
       };
     }
-    const place = q(`SELECT COUNT(*) + 1 AS p FROM users WHERE elo > ?`).get(u.elo).p;
+    const userElo = isPyramid ? (u.elo_pyramid ?? 1000) : u.elo;
+    const place = q(`SELECT COUNT(*) + 1 AS p FROM users WHERE ${eloCol} > ?`).get(userElo).p;
     const season = q(`SELECT * FROM seasons WHERE closed = 0 OR closed IS NULL ORDER BY id DESC LIMIT 1`).get();
     return {
-      top: ratingCache.data.map((r) => ({
+      top: ratingCache[disc].data.map((r) => ({
         id: r.id, name: r.name, elo: r.elo, role: r.role,
       })),
-      me: { id: u.id, name: u.name, elo: u.elo, place, role: u.role },
+      me: { id: u.id, name: u.name, elo: userElo, place, role: u.role },
       season: season ? { id: season.id, startedAt: season.started_at, endsAt: season.ends_at } : null,
     };
   });
@@ -177,53 +211,73 @@ export default async function usersRoutes(app) {
     if (!p) throw new ApiError(404, "player_not_found");
 
     const t = now();
+    const disc = u.active_discipline ?? 'pool';
+    const isPyramid = disc === 'pyramid';
+    const eloCol = isPyramid ? 'elo_pyramid' : 'elo';
     const isFavorite = !!q(`SELECT 1 FROM favorites WHERE user_id = ? AND fav_id = ?`).get(u.id, id);
     const h2h = q(
       `SELECT * FROM matches
-       WHERE status = 'confirmed'
+       WHERE status = 'confirmed' AND discipline = ?
          AND ((initiator_id = ? AND opponent_id = ?) OR (initiator_id = ? AND opponent_id = ?))
        ORDER BY resolved_at DESC LIMIT ?`
-    ).all(u.id, id, id, u.id, config.HISTORY_LIMIT);
+    ).all(disc, u.id, id, id, u.id, config.HISTORY_LIMIT);
 
     // Последние 5 матчей игрока (для его профиля)
     const recentMatches = q(
       `SELECT m.*, o.id AS o_id, o.name AS o_name, o.elo AS o_elo
        FROM matches m
        JOIN users o ON o.id = CASE WHEN m.initiator_id = ? THEN m.opponent_id ELSE m.initiator_id END
-       WHERE m.status = 'confirmed' AND (m.initiator_id = ? OR m.opponent_id = ?)
+       WHERE m.status = 'confirmed' AND m.discipline = ? AND (m.initiator_id = ? OR m.opponent_id = ?)
        ORDER BY m.resolved_at DESC LIMIT 5`
-    ).all(id, id, id);
+    ).all(id, disc, id, id);
 
     // H2H счёт всего
     const h2hTotal = q(
       `SELECT COUNT(*) AS total,
               SUM(CASE WHEN winner_id = ? THEN 1 ELSE 0 END) AS my_wins
        FROM matches
-       WHERE status = 'confirmed'
+       WHERE status = 'confirmed' AND discipline = ?
          AND ((initiator_id = ? AND opponent_id = ?) OR (initiator_id = ? AND opponent_id = ?))`
-    ).get(u.id, u.id, id, id, u.id);
+    ).get(u.id, disc, u.id, id, id, u.id);
 
     // Место в рейтинге
-    const place = q(`SELECT COUNT(*) + 1 AS p FROM users WHERE elo > ?`).get(p.elo).p;
+    const pElo = isPyramid ? (p.elo_pyramid ?? 1000) : p.elo;
+    const place = q(`SELECT COUNT(*) + 1 AS p FROM users WHERE ${eloCol} > ?`).get(pElo).p;
 
-    const rank = rankOf(p.elo);
-    const xp = p.xp ?? 0;
+    const rank = rankOf(pElo);
+    const xp = isPyramid ? (p.xp_pyramid ?? 0) : (p.xp ?? 0);
     const level = levelFromXp(xp);
+    const pStreak = isPyramid ? (p.streak_pyramid ?? 0) : (p.streak ?? 0);
+    const pBestStreak = isPyramid ? (p.best_streak_pyramid ?? 0) : (p.best_streak ?? 0);
+    const pPeakElo = isPyramid ? (p.peak_elo_pyramid ?? 1000) : (p.peak_elo ?? p.elo);
+    const pMatchesCount = isPyramid ? (p.matches_count_pyramid ?? 0) : p.matches_count;
+    const pWinsCount = isPyramid ? (p.wins_count_pyramid ?? 0) : p.wins_count;
 
-    const pAchPtsRows = q(`SELECT code FROM achievements WHERE user_id = ?`).all(id);
-    const pAchPoints = pAchPtsRows.reduce((sum, r) => sum + (ACH_PTS[r.code] ?? (r.code.startsWith("season_master_") ? 100 : 0)), 0);
+    const pAchPtsRows = isPyramid
+      ? q(`SELECT code FROM achievements WHERE user_id = ? AND code LIKE 'p:%'`).all(id)
+      : q(`SELECT code FROM achievements WHERE user_id = ? AND code NOT LIKE 'p:%'`).all(id);
+    const pAchPoints = pAchPtsRows.reduce((sum, r) => {
+      const baseCode = r.code.startsWith('p:') ? r.code.slice(2) : r.code;
+      const isSeason = baseCode.startsWith("season_master_");
+      return sum + (ACH_PTS[baseCode] ?? (isSeason ? 100 : 0));
+    }, 0);
 
     return {
       player: {
-        ...publicUser(p),
+        id: p.id,
+        name: p.name,
+        elo: pElo,
+        role: p.role,
+        matchesCount: pMatchesCount,
+        winsCount: pWinsCount,
         contact: u.activated_until > t ? p.contact : null,
         contactType: p.contact_type ?? "telegram",
         rank,
         xp,
         level,
-        streak: p.streak ?? 0,
-        bestStreak: p.best_streak ?? 0,
-        peakElo: p.peak_elo ?? p.elo,
+        streak: pStreak,
+        bestStreak: pBestStreak,
+        peakElo: pPeakElo,
         place,
         achPoints: pAchPoints,
       },
@@ -247,13 +301,14 @@ export default async function usersRoutes(app) {
   // ── История моих матчей ────────────────────────────────────
   app.get("/history", (req) => {
     const u = requireUser(req);
+    const disc = u.active_discipline ?? 'pool';
     const rows = q(
       `SELECT m.*, w.id AS o_id, w.name AS o_name, w.elo AS o_elo, w.role AS o_role
        FROM matches m
        JOIN users w ON w.id = CASE WHEN m.initiator_id = ? THEN m.opponent_id ELSE m.initiator_id END
-       WHERE m.status = 'confirmed' AND (m.initiator_id = ? OR m.opponent_id = ?)
+       WHERE m.status = 'confirmed' AND m.discipline = ? AND (m.initiator_id = ? OR m.opponent_id = ?)
        ORDER BY m.resolved_at DESC LIMIT ?`
-    ).all(u.id, u.id, u.id, config.HISTORY_LIMIT);
+    ).all(u.id, disc, u.id, u.id, config.HISTORY_LIMIT);
     return {
       matches: rows.map((m) => {
         const iWon = m.winner_id === u.id;
@@ -271,14 +326,15 @@ export default async function usersRoutes(app) {
   // ── 5 последних соперников (быстрый выбор на экране результата) ─
   app.get("/recent-opponents", (req) => {
     const u = requireUser(req);
+    const disc = u.active_discipline ?? 'pool';
     const rows = q(
       `SELECT m.winner_id, m.delta, m.resolved_at,
               o.id AS o_id, o.name AS o_name, o.elo AS o_elo, o.role AS o_role
        FROM matches m
        JOIN users o ON o.id = CASE WHEN m.initiator_id = ? THEN m.opponent_id ELSE m.initiator_id END
-       WHERE m.status = 'confirmed' AND (m.initiator_id = ? OR m.opponent_id = ?)
+       WHERE m.status = 'confirmed' AND m.discipline = ? AND (m.initiator_id = ? OR m.opponent_id = ?)
        ORDER BY m.resolved_at DESC LIMIT 30`
-    ).all(u.id, u.id, u.id);
+    ).all(u.id, disc, u.id, u.id);
     const seen = new Set();
     const result = [];
     for (const m of rows) {

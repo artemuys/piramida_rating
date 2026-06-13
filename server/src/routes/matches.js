@@ -72,12 +72,16 @@ export default async function matchesRoutes(app) {
         if (pendingFor(u.id)) throw new ApiError(409, "you_busy");
         if (pendingFor(opp.id)) throw new ApiError(409, "opponent_busy");
 
+        const disc = u.active_discipline ?? 'pool';
+        const uElo   = disc === 'pyramid' ? (u.elo_pyramid   ?? 1000) : u.elo;
+        const oppElo = disc === 'pyramid' ? (opp.elo_pyramid ?? 1000) : opp.elo;
+
         const r = q(
           `INSERT INTO matches
-             (initiator_id, opponent_id, initiator_claim, status,
+             (initiator_id, opponent_id, initiator_claim, status, discipline,
               initiator_elo_before, opponent_elo_before, expires_at, created_at)
-           VALUES (?, ?, ?, 'pending', ?, ?, ?, ?)`
-        ).run(u.id, opp.id, result, u.elo, opp.elo, t + config.MATCH_CONFIRM_MS, t);
+           VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?)`
+        ).run(u.id, opp.id, result, disc, uElo, oppElo, t + config.MATCH_CONFIRM_MS, t);
 
         const m = q(`SELECT * FROM matches WHERE id = ?`).get(Number(r.lastInsertRowid));
         return { match: matchPayload(m, u.id) };
@@ -121,19 +125,38 @@ export default async function matchesRoutes(app) {
       const initiatorWon = m.initiator_claim === "win";
       const winner = initiatorWon ? init : opp;
       const loser  = initiatorWon ? opp  : init;
-      const d = eloDelta(winner.elo, loser.elo);
 
-      const newWinnerElo = winner.elo + d;
-      const newLoserElo  = Math.max(0, loser.elo - d);
-      const winnerStreak = winner.streak > 0 ? winner.streak + 1 : 1;
-      const loserStreak  = loser.streak  < 0 ? loser.streak - 1  : -1;
+      const disc = m.discipline ?? 'pool';
+      const isPyramid = disc === 'pyramid';
 
-      q(`UPDATE users SET elo=?, matches_count=matches_count+1, wins_count=wins_count+1,
-           xp=xp+?, streak=?, best_streak=MAX(best_streak,?), peak_elo=MAX(peak_elo,?) WHERE id=?`)
-        .run(newWinnerElo, config.XP_WIN, winnerStreak, winnerStreak, newWinnerElo, winner.id);
+      // Дисциплина-специфичные elo и статы
+      const winnerElo = isPyramid ? (winner.elo_pyramid ?? 1000) : winner.elo;
+      const loserElo  = isPyramid ? (loser.elo_pyramid  ?? 1000) : loser.elo;
+      const winnerStreak = isPyramid ? (winner.streak_pyramid ?? 0) : (winner.streak ?? 0);
+      const loserStreak  = isPyramid ? (loser.streak_pyramid  ?? 0) : (loser.streak  ?? 0);
 
-      q(`UPDATE users SET elo=?, matches_count=matches_count+1, xp=xp+?, streak=? WHERE id=?`)
-        .run(newLoserElo, config.XP_LOSS, loserStreak, loser.id);
+      const d = eloDelta(winnerElo, loserElo);
+      const newWinnerElo = winnerElo + d;
+      const newLoserElo  = Math.max(0, loserElo - d);
+      const newWinnerStreak = winnerStreak > 0 ? winnerStreak + 1 : 1;
+      const newLoserStreak  = loserStreak  < 0 ? loserStreak - 1  : -1;
+
+      if (isPyramid) {
+        q(`UPDATE users SET elo_pyramid=?, matches_count_pyramid=matches_count_pyramid+1, wins_count_pyramid=wins_count_pyramid+1,
+             xp_pyramid=xp_pyramid+?, streak_pyramid=?, best_streak_pyramid=MAX(best_streak_pyramid,?), peak_elo_pyramid=MAX(peak_elo_pyramid,?) WHERE id=?`)
+          .run(newWinnerElo, config.XP_WIN, newWinnerStreak, newWinnerStreak, newWinnerElo, winner.id);
+        q(`UPDATE users SET elo_pyramid=?, matches_count_pyramid=matches_count_pyramid+1, xp_pyramid=xp_pyramid+?, streak_pyramid=? WHERE id=?`)
+          .run(newLoserElo, config.XP_LOSS, newLoserStreak, loser.id);
+      } else {
+        q(`UPDATE users SET elo=?, matches_count=matches_count+1, wins_count=wins_count+1,
+             xp=xp+?, streak=?, best_streak=MAX(best_streak,?), peak_elo=MAX(peak_elo,?) WHERE id=?`)
+          .run(newWinnerElo, config.XP_WIN, newWinnerStreak, newWinnerStreak, newWinnerElo, winner.id);
+        q(`UPDATE users SET elo=?, matches_count=matches_count+1, xp=xp+?, streak=? WHERE id=?`)
+          .run(newLoserElo, config.XP_LOSS, newLoserStreak, loser.id);
+      }
+
+      const initEloBefore = isPyramid ? (init.elo_pyramid ?? 1000) : init.elo;
+      const oppEloBefore  = isPyramid ? (opp.elo_pyramid  ?? 1000) : opp.elo;
 
       q(`UPDATE matches SET status='confirmed', opponent_claim=?, winner_id=?, delta=?,
            initiator_elo_before=?, initiator_elo_after=?,
@@ -141,15 +164,15 @@ export default async function matchesRoutes(app) {
            resolved_at=?, initiator_ack=0, opponent_ack=1 WHERE id=?`)
         .run(
           claim, winner.id, d,
-          init.elo, initiatorWon ? newWinnerElo : newLoserElo,
-          opp.elo,  initiatorWon ? newLoserElo  : newWinnerElo,
+          initEloBefore, initiatorWon ? newWinnerElo : newLoserElo,
+          oppEloBefore,  initiatorWon ? newLoserElo  : newWinnerElo,
           t, id
         );
 
       addFeedEvent("match_win", winner.id, loser.id, {
         winnerId: winner.id, loserId: loser.id,
         winnerName: winner.name, loserName: loser.name, delta: d,
-      });
+      }, disc);
 
       return {
         match: matchPayload(q(`SELECT * FROM matches WHERE id = ?`).get(id), u.id),
@@ -157,13 +180,14 @@ export default async function matchesRoutes(app) {
         winnerId: winner.id,
         loserId: loser.id,
         matchId: id,
+        discipline: disc,
       };
     });
 
     // Ачивки — вне транзакции (чистые чтения + отдельные INSERT OR IGNORE)
     if (txResult.confirmed) {
       try {
-        checkMatchAchievements(txResult.winnerId, txResult.loserId, txResult.matchId);
+        checkMatchAchievements(txResult.winnerId, txResult.loserId, txResult.matchId, txResult.discipline);
       } catch { /* не роняем запрос из-за ачивок */ }
     }
 

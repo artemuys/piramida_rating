@@ -34,16 +34,18 @@ export const ACH_META = {
 };
 
 export function getAchMeta(code, t, extra = {}) {
-  const icon = ACH_META[code]?.icon;
-  const pts = ACH_META[code]?.pts ?? 0;
+  // pyramid-discipline achievements have a 'p:' prefix — strip it for display lookup
+  const baseCode = code.startsWith('p:') ? code.slice(2) : code;
+  const icon = ACH_META[baseCode]?.icon;
+  const pts = ACH_META[baseCode]?.pts ?? 0;
   const meta = t?.ach?.meta;
 
-  if (meta && meta[code]) {
-    return { icon: icon ?? "🏅", label: meta[code].label, desc: meta[code].desc, pts };
+  if (meta && meta[baseCode]) {
+    return { icon: icon ?? "🏅", label: meta[baseCode].label, desc: meta[baseCode].desc, pts };
   }
 
-  if (/^season_master_(\d+)$/.test(code)) {
-    const seasonId = code.match(/\d+$/)[0];
+  if (/^season_master_(\d+)$/.test(baseCode)) {
+    const seasonId = baseCode.match(/\d+$/)[0];
     let label = meta ? `${meta.season_master?.label ?? "Season Master"} #${seasonId}` : `Хозяин сезона #${seasonId}`;
     let desc = meta
       ? `${meta.season_master?.desc ?? "Top 3"} #${seasonId}`
@@ -85,8 +87,8 @@ export function getAchMeta(code, t, extra = {}) {
     tried:         { label: "Ты пытался",          desc: "Проиграть игроку из топ-3" },
     phoenix:       { label: "Феникс",              desc: "Выиграть после 4+ поражений подряд" },
   };
-  if (RU_META[code]) return { icon: icon ?? "🏅", ...RU_META[code], pts };
-  return { icon: "❓", label: code, desc: "", pts: 0 };
+  if (RU_META[baseCode]) return { icon: icon ?? "🏅", ...RU_META[baseCode], pts };
+  return { icon: "❓", label: baseCode, desc: "", pts: 0 };
 }
 
 function AchCard({ code, earnedAt, locked, seasonStartedAt, seasonEndsAt, t, lang }) {

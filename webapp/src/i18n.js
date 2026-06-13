@@ -141,6 +141,12 @@ export const T = {
       ends: "Ends:",
       hint: "When the season ends, Elo resets with partial carry (30% above 1000). Top 3 earn «🏆 Season Master».",
     },
+    disc_switch: {
+      label: "Discipline",
+      pool: "Pool",
+      pyramid: "Pyramid",
+      hint: "Pool and Pyramid are completely separate — different ratings, achievements, and records.",
+    },
     settings_ext: {
       nameLabel: "👤 Name",
       nameFixed: "Name is set at registration and cannot be changed.",
@@ -345,6 +351,12 @@ export const T = {
       season: "Sezon #",
       ends: "Koniec:",
       hint: "Po zakończeniu sezonu Elo resetuje się z częściowym zachowaniem (30% powyżej 1000). Top 3 graczy zdobywa «🏆 Mistrz sezonu».",
+    },
+    disc_switch: {
+      label: "Dyscyplina",
+      pool: "Pool",
+      pyramid: "Piramida",
+      hint: "Pool i Piramida są całkowicie oddzielne — różne rankingi, osiągnięcia i rekordy.",
     },
     settings_ext: {
       nameLabel: "👤 Imię",
@@ -555,6 +567,12 @@ export const T = {
       ends: "Кінець:",
       hint: "Після завершення сезону Ело скидається із частковим збереженням (30% від різниці з 1000). Топ-3 гравці отримують «🏆 Господар сезону».",
     },
+    disc_switch: {
+      label: "Дисципліна",
+      pool: "Пул",
+      pyramid: "Піраміда",
+      hint: "Пул і Піраміда повністю розділені — різні рейтинги, досягнення і рекорди.",
+    },
     settings_ext: {
       nameLabel: "👤 Ім'я",
       nameFixed: "Ім'я задається при реєстрації та не змінюється.",
@@ -763,6 +781,12 @@ export const T = {
       season: "Сезон #",
       ends: "Конец:",
       hint: "После окончания сезона эло сбрасывается с частичным сохранением (30% от разницы с 1000). Топ-3 игрока получают «🏆 Хозяин сезона».",
+    },
+    disc_switch: {
+      label: "Дисциплина",
+      pool: "Пул",
+      pyramid: "Пирамида",
+      hint: "Пул и Пирамида полностью разделены — разные рейтинги, достижения и рекорды.",
     },
     settings_ext: {
       nameLabel: "👤 Имя",
