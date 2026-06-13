@@ -1,6 +1,6 @@
 import { Component, useEffect, useRef, useState } from "react";
 import { useApp } from "./store.jsx";
-import { avaColor, initials, winPct, rankOf, xpProgress } from "./util.js";
+import { avaColor, initials, winPct, rankOf, xpProgress, levelFromXp, xpToReachLevel } from "./util.js";
 
 export function Ava({ id, name, size = 38 }) {
   const color = avaColor(id);
@@ -179,7 +179,7 @@ export function RulesModal({ onClose }) {
  * Итог матча. match — сериализованный объект с сервера:
  * { status, my:{eloBefore,eloAfter}, their:{...}, opponentUser, delta, iWon }
  */
-export function MatchResultModal({ match, onClose }) {
+export function MatchResultModal({ match, xpBefore, onClose }) {
   const { me, t } = useApp();
   const type =
     match.status === "confirmed" ? (match.iWon ? "win" : "lose")
@@ -226,6 +226,8 @@ export function MatchResultModal({ match, onClose }) {
 
   const newStreak = match.status === "confirmed" && match.iWon ? (me.streak > 0 ? me.streak : 1) : null;
   const xpGain = resolved ? (match.iWon ? 20 : 10) : null;
+  const xpBeforeVal = xpBefore ?? (me?.xp ?? 0);
+  const xpAfterVal = xpBeforeVal + (xpGain ?? 0);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -248,11 +250,7 @@ export function MatchResultModal({ match, onClose }) {
             <PlayerCard user={opp} side={theirSide} eloBefore={match.their?.eloBefore} eloAfter={match.their?.eloAfter} />
           </div>
           {xpGain && (
-            <div className="modal-xp-row">
-              <span className="modal-xp-icon">⭐</span>
-              <span className="modal-xp-label">Опыт</span>
-              <span className="modal-xp-gain">+{xpGain} XP</span>
-            </div>
+            <XpBarAnim xpBefore={xpBeforeVal} xpAfter={xpAfterVal} gain={xpGain} />
           )}
           <div className="modal-divider" />
           <button className="modal-btn-done" onClick={onClose}>{t.modal.done}</button>
@@ -308,6 +306,36 @@ export function AchievementUnlockModal({ code, earnedAt, onClose }) {
           Отлично!
         </button>
       </div>
+    </div>
+  );
+}
+
+function XpBarAnim({ xpBefore, xpAfter, gain }) {
+  const progBefore = xpProgress(xpBefore);
+  const progAfter  = xpProgress(xpAfter);
+  const leveledUp  = progAfter.level > progBefore.level;
+
+  // Если левел апнулись — показываем прогресс на новом уровне; иначе на текущем
+  const level  = progAfter.level;
+  const pctBefore = leveledUp ? 0 : progBefore.pct;
+  const [pct, setPct] = useState(pctBefore);
+
+  useEffect(() => {
+    const id = setTimeout(() => setPct(progAfter.pct), 120);
+    return () => clearTimeout(id);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div className="modal-xp-wrap">
+      <div className="modal-xp-top">
+        <span className="modal-xp-lvl">⭐ Ур. {level}</span>
+        {leveledUp && <span className="modal-xp-levelup">УРОВЕНЬ ВВЕРХ!</span>}
+        <span className="modal-xp-gain">+{gain} XP</span>
+      </div>
+      <div className="modal-xp-track">
+        <div className="modal-xp-fill" style={{ width: `${pct}%` }} />
+      </div>
+      <div className="modal-xp-bottom">{progAfter.current} / {progAfter.needed} XP</div>
     </div>
   );
 }

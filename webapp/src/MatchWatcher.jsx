@@ -17,6 +17,7 @@ export function MatchWatcher() {
   const [active, setActive] = useState({ incoming: null, outgoing: null, unseen: null });
   const [skew, setSkew] = useState(0); // serverNow - clientNow
   const [resultMatch, setResultMatch] = useState(null);
+  const [resultXpBefore, setResultXpBefore] = useState(null);
   const [achQueue, setAchQueue] = useState([]); // очередь незасмотренных достижений
   const [busy, setBusy] = useState(false);
   const aliveRef = useRef(true);
@@ -56,17 +57,20 @@ export function MatchWatcher() {
   // Непросмотренный итог → показываем модалку (один раз)
   useEffect(() => {
     if (active.unseen && !resultMatch) {
+      setResultXpBefore(me?.xp ?? 0);
       setResultMatch(active.unseen);
       haptic(active.unseen.status === "confirmed" ? "ok" : "err");
     }
-  }, [active.unseen, resultMatch]);
+  }, [active.unseen, resultMatch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function respond(matchId, result) {
     if (busy) return;
     setBusy(true);
     try {
+      const xpBefore = me?.xp ?? 0;
       const r = await api.post(`/matches/${matchId}/respond`, { result });
       setActive((a) => ({ ...a, incoming: null }));
+      setResultXpBefore(xpBefore);
       setResultMatch(r.match);
       haptic(r.match.status === "confirmed" ? "ok" : "err");
       api.post(`/matches/${matchId}/ack`).catch(() => {});
@@ -138,7 +142,7 @@ export function MatchWatcher() {
   }
 
   if (achQueue.length > 0) return <AchievementUnlockModal code={achQueue[0]} onClose={dismissAch} />;
-  if (resultMatch) return <MatchResultModal match={resultMatch} onClose={closeResult} />;
+  if (resultMatch) return <MatchResultModal match={resultMatch} xpBefore={resultXpBefore} onClose={closeResult} />;
 
   if (active.incoming) {
     return <IncomingConfirm match={active.incoming} skew={skew} busy={busy} onRespond={respond} t={t} onExpired={poll} />;

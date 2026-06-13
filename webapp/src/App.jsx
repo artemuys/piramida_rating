@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useApp } from "./store.jsx";
 import { ErrorBoundary, Spinner, Toasts } from "./components.jsx";
+import { api } from "./api.js";
 import { MatchWatcher } from "./MatchWatcher.jsx";
 import { Onboarding } from "./screens/Onboarding.jsx";
 import { Home, SearchListScreen } from "./screens/Home.jsx";
@@ -33,6 +34,33 @@ const SCREENS = {
   records: { component: Records, title: (t) => t.nav.records },
   superadmin: { component: SuperAdmin, title: (t) => t.nav.superadmin, superOnly: true },
 };
+
+function AnnounceBanner() {
+  const [ann, setAnn] = useState(null);
+  const [dismissed, setDismissed] = useState(() => localStorage.getItem("ann_dismissed") || "");
+
+  useEffect(() => {
+    api.get("/announcements").then(r => {
+      const latest = r.announcements?.[0];
+      if (latest) setAnn(latest);
+    }).catch(() => {});
+  }, []);
+
+  if (!ann || dismissed === String(ann.id)) return null;
+
+  function dismiss() {
+    localStorage.setItem("ann_dismissed", String(ann.id));
+    setDismissed(String(ann.id));
+  }
+
+  return (
+    <div className="announce-banner" onClick={dismiss}>
+      <span className="announce-banner-icon">📢</span>
+      <span className="announce-banner-text">{ann.text}</span>
+      <span className="announce-banner-close">✕</span>
+    </div>
+  );
+}
 
 function Shell() {
   const { me, phase, t, refreshMe } = useApp();
@@ -103,6 +131,7 @@ function Shell() {
 
   return (
     <div className="app">
+      <AnnounceBanner />
       <Toasts />
       <MatchWatcher />
       <div className="topbar">

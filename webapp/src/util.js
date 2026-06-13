@@ -62,6 +62,17 @@ export function fmtElapsed(ms) {
   return `${hh}:${mm}:${ss}`;
 }
 
+export function fmtAgo(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  if (s < 60) return "только что";
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m} мин назад`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} ч назад`;
+  const d = Math.floor(h / 24);
+  return `${d} д назад`;
+}
+
 export function winPct(matches, wins) {
   return matches > 0 ? Math.round((wins / matches) * 100) : 0;
 }

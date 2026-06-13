@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { useApp } from "../store.jsx";
 import { Ava, Crown, RulesModal, Spinner, Stats, Empty, RankBadge, LevelBar, StreakBadge, StreakProgress } from "../components.jsx";
-import { useNow, fmtElapsed, fmtDateTime } from "../util.js";
+import { useNow, fmtElapsed, fmtDateTime, fmtAgo } from "../util.js";
 import { haptic } from "../telegram.js";
 import { ACH_META } from "./Achievements.jsx";
 
@@ -122,16 +122,14 @@ function AchFeedModal({ code, onClose }) {
 
 function LiveFeed({ navigate }) {
   const [feed, setFeed] = useState(null);
-  const [announcements, setAnnouncements] = useState([]);
   const [achModal, setAchModal] = useState(null); // { code }
 
   useEffect(() => {
     api.get("/feed").then(r => setFeed(r.feed)).catch(() => setFeed([]));
-    api.get("/announcements").then(r => setAnnouncements(r.announcements.slice(0, 2))).catch(() => {});
   }, []);
 
-  if (!feed && !announcements.length) return null;
-  if (feed !== null && feed.length === 0 && !announcements.length) return null;
+  if (!feed) return null;
+  if (feed.length === 0) return null;
 
   function renderFeedItem(item) {
     const d = item.data || {};
@@ -139,8 +137,8 @@ function LiveFeed({ navigate }) {
       case "match_win": {
         const winnerId = d.winnerId || item.actorId;
         const loserId = d.loserId || item.targetId;
-        const winnerName = d.winnerName || item.actorName;
-        const loserName = d.loserName || item.targetName;
+        const winnerName = (d.winnerName || item.actorName || "").trim() || "Игрок";
+        const loserName = (d.loserName || item.targetName || "").trim() || "Игрок";
         return (
           <div className="feed-text">
             🏆{" "}
@@ -197,20 +195,11 @@ function LiveFeed({ navigate }) {
         <div className="feed-header">
           <span className="feed-title">🔴 Живая лента клуба</span>
         </div>
-        {announcements.map(a => (
-          <div key={`ann-${a.id}`} className="feed-item feed-announce">
-            <span className="feed-icon">📢</span>
-            <div className="feed-content">
-              <div className="feed-text">{a.text}</div>
-              <div className="feed-meta">{a.authorName}</div>
-            </div>
-          </div>
-        ))}
-        {(feed || []).map(item => (
+        {feed.map(item => (
           <div key={item.id} className="feed-item">
             <div className="feed-content">
               {renderFeedItem(item)}
-              <div className="feed-meta">{fmtElapsed(Date.now() - item.createdAt)} назад</div>
+              <div className="feed-meta">{fmtAgo(Date.now() - item.createdAt)}</div>
             </div>
           </div>
         ))}

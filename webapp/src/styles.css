@@ -293,8 +293,6 @@ body { color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Disp
 .ach-text { flex: 1; min-width: 0; }
 .ach-label { font-size: 13px; font-weight: 600; letter-spacing: -.01em; line-height: 1.3; }
 .ach-desc { font-size: 11px; color: rgba(255,255,255,.4); margin-top: 3px; line-height: 1.3; }
-.ach-date { font-size: 10px; color: #30D158; margin-top: 4px; font-weight: 500; }
-.ach-check { position: absolute; top: 8px; right: 8px; font-size: 12px; color: #30D158; font-weight: 700; }
 
 /* ─── RECORDS ────────────────────────────────────────────── */
 .record-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 20px; border-bottom: 1px solid rgba(255,255,255,.08); }
@@ -368,12 +366,36 @@ body { color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Disp
 .duel-contact-lbl { font-size: 11px; color: rgba(255,255,255,.4); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
 .duel-contact-val { font-size: 15px; font-weight: 500; }
 
-/* ─── XP ROW IN MATCH RESULT ─────────────────────────────── */
-.modal-xp-row { display: flex; align-items: center; gap: 8px; background: rgba(255,214,10,.08); border: 1px solid rgba(255,214,10,.18); border-radius: 12px; padding: 10px 14px; margin-bottom: 14px; }
-.modal-xp-icon { font-size: 20px; }
-.modal-xp-label { flex: 1; font-size: 15px; color: rgba(255,255,255,.6); }
-.modal-xp-gain { font-size: 18px; font-weight: 700; color: #FFD60A; animation: xp-pop .5s cubic-bezier(.34,1.56,.64,1) .3s both; }
+/* ─── XP BAR IN MATCH RESULT ─────────────────────────────── */
+.modal-xp-wrap { background: rgba(255,214,10,.07); border: 1px solid rgba(255,214,10,.18); border-radius: 14px; padding: 12px 14px; margin-bottom: 14px; }
+.modal-xp-top { display: flex; align-items: center; margin-bottom: 8px; }
+.modal-xp-lvl { font-size: 14px; font-weight: 700; color: rgba(255,255,255,.7); flex: 1; }
+.modal-xp-levelup { font-size: 11px; font-weight: 800; color: #FFD60A; text-transform: uppercase; letter-spacing: .06em; background: rgba(255,214,10,.15); padding: 2px 8px; border-radius: 10px; margin-right: 8px; animation: xp-pop .5s cubic-bezier(.34,1.56,.64,1) .1s both; }
+.modal-xp-gain { font-size: 16px; font-weight: 700; color: #FFD60A; animation: xp-pop .5s cubic-bezier(.34,1.56,.64,1) .3s both; }
+.modal-xp-track { height: 8px; background: rgba(255,255,255,.1); border-radius: 4px; overflow: hidden; }
+.modal-xp-fill { height: 100%; background: linear-gradient(90deg, #FFD60A, #FF9500); border-radius: 4px; transition: width 1.1s cubic-bezier(.22,1,.36,1); }
+.modal-xp-bottom { font-size: 11px; color: rgba(255,255,255,.3); margin-top: 5px; text-align: right; }
 @keyframes xp-pop { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+/* ─── ANNOUNCE BANNER ────────────────────────────────────── */
+.announce-banner { display: flex; align-items: center; gap: 10px; background: linear-gradient(90deg, #1a1a00, #1c1800); border-bottom: 1px solid rgba(255,214,10,.25); padding: 10px 16px; cursor: pointer; transition: background .15s; }
+.announce-banner:active { background: rgba(255,214,10,.08); }
+.announce-banner-icon { font-size: 18px; flex-shrink: 0; }
+.announce-banner-text { flex: 1; font-size: 14px; color: rgba(255,255,255,.85); line-height: 1.4; letter-spacing: -.01em; }
+.announce-banner-close { font-size: 14px; color: rgba(255,255,255,.3); flex-shrink: 0; padding: 4px; }
+
+/* ─── ACHIEVEMENT SCORE CARD ─────────────────────────────── */
+.ach-score-card { display: flex; align-items: center; gap: 14px; background: linear-gradient(135deg,#1c1a00,#1a1c00); border: 1px solid rgba(255,214,10,.2); border-radius: 16px; padding: 16px 20px; margin-bottom: 14px; }
+.ach-score-icon { font-size: 36px; }
+.ach-score-info { flex: 1; }
+.ach-score-val { font-size: 28px; font-weight: 800; color: #FFD60A; letter-spacing: -.03em; }
+.ach-score-val span { font-size: 16px; font-weight: 500; color: rgba(255,214,10,.6); }
+.ach-score-sub { font-size: 13px; color: rgba(255,255,255,.4); margin-top: 3px; }
+
+/* ─── ACHIEVEMENT POINTS IN CARD ─────────────────────────── */
+.ach-pts-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+.ach-pts { font-size: 10px; color: #FFD60A; font-weight: 700; }
+.ach-date { font-size: 10px; color: #30D158; font-weight: 500; }
 
 /* ─── ACHIEVEMENT UNLOCK MODAL ───────────────────────────── */
 @keyframes ach-rays { 0% { transform: rotate(0deg); opacity: .6; } 100% { transform: rotate(360deg); opacity: .6; } }
