@@ -14,15 +14,24 @@ function isValidPhone(val) {
 
 export function Settings() {
   const { me, t, refreshMe, toastError, toast } = useApp();
+  const tgUsername = getTgUsername(); // "" if user has no @username
+  const hasTgUsername = !!tgUsername;
+
+  // If user previously saved a telegram contact keep it; otherwise only allow telegram if they have a username
+  const alreadyHasTgContact = (me.contactType || "telegram") === "telegram" && !!me.contact;
+  const canUseTelegram = hasTgUsername || alreadyHasTgContact;
+
   const [contact, setContact] = useState(() => {
     if (me.contact) return me.contact;
-    if ((me.contactType || "telegram") === "telegram") {
-      const u = getTgUsername();
-      return u ? `@${u}` : "";
-    }
+    if (hasTgUsername) return `@${tgUsername}`;
     return "";
   });
-  const [contactType, setContactType] = useState(me.contactType || "telegram");
+  const [contactType, setContactType] = useState(() => {
+    const saved = me.contactType || "telegram";
+    // If they have telegram saved keep it; if no username default to phone
+    if (saved === "telegram" && !canUseTelegram) return "phone";
+    return saved;
+  });
   const [disc, setDisc] = useState(me.prefDisc);
   const [pays, setPays] = useState(me.prefPays);
   const [lang, setLang] = useState(me.lang);
@@ -33,9 +42,9 @@ export function Settings() {
 
   function switchContactType(type) {
     setContactType(type);
-    if (type === "telegram" && !contact) {
-      const u = getTgUsername();
-      if (u) setContact(`@${u}`);
+    if (type === "telegram") {
+      // Auto-fill with @username if not already set
+      if (!contact && hasTgUsername) setContact(`@${tgUsername}`);
     }
   }
 
@@ -122,9 +131,22 @@ export function Settings() {
         <div className="s-row" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
           <div className="s-lbl">📩 Способ связи <span style={{ color: "#FF453A", fontSize: 11 }}>обязательно</span></div>
           <div className="tog-g" style={{ width: "100%" }}>
-            <button className={`tog${contactType === "telegram" ? " on" : ""}`} onClick={() => switchContactType("telegram")}>Telegram</button>
+            <button
+              className={`tog${contactType === "telegram" ? " on" : ""}${!canUseTelegram ? " disabled" : ""}`}
+              onClick={() => canUseTelegram && switchContactType("telegram")}
+              disabled={!canUseTelegram}
+              title={!canUseTelegram ? "У вас нет @username в Telegram" : undefined}
+              style={!canUseTelegram ? { opacity: 0.38, cursor: "not-allowed" } : {}}
+            >
+              Telegram
+            </button>
             <button className={`tog${contactType === "phone" ? " on" : ""}`} onClick={() => switchContactType("phone")}>Телефон</button>
           </div>
+          {!canUseTelegram && (
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,.4)", padding: "0 2px" }}>
+              Telegram недоступен — у вас нет @username. Установите его в настройках Telegram.
+            </div>
+          )}
           <input
             className="s-inp"
             value={contact}
@@ -141,8 +163,8 @@ export function Settings() {
         </div>
         <div className="s-hint">
           {contactType === "telegram"
-            ? "Введите @username — будет прямая ссылка на ваш Telegram."
-            : "Введите номер телефона — видно только активированным игрокам."}
+            ? "Будет прямая ссылка на ваш Telegram."
+            : "Номер телефона — видно только активированным игрокам."}
         </div>
       </div>
 

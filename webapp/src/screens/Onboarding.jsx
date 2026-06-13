@@ -2,14 +2,24 @@ import { useState } from "react";
 import { api } from "../api.js";
 import { LANGS, getT } from "../i18n.js";
 import { useApp } from "../store.jsx";
-import { haptic } from "../telegram.js";
+import { haptic, tg } from "../telegram.js";
+
+function getTgUsername() {
+  try { return tg?.initDataUnsafe?.user?.username || ""; } catch { return ""; }
+}
+
+function isValidPhone(val) {
+  return /^\+?[\d\s\-\(\)]{7,20}$/.test(val.trim()) && (val.match(/\d/g) || []).length >= 7;
+}
 
 export function Onboarding() {
   const { obLang, setObLang, refreshMe, toastError } = useApp();
   const [step, setStep] = useState(0); // 0 = язык (всегда начинаем с выбора языка)
   const [name, setName] = useState("");
-  const [contact, setContact] = useState("");
-  const [contactType, setContactType] = useState("telegram");
+  const tgUsername = getTgUsername();
+  const hasTgUsername = !!tgUsername;
+  const [contact, setContact] = useState(hasTgUsername ? `@${tgUsername}` : "");
+  const [contactType, setContactType] = useState(hasTgUsername ? "telegram" : "phone");
   const [disc, setDisc] = useState(2);
   const [pays, setPays] = useState(0);
   const [chosen, setChosen] = useState(obLang);
@@ -109,28 +119,49 @@ export function Onboarding() {
     },
     {
       emoji: "💬", title: t.step1.title, sub: t.step1.sub,
-      content: (
-        <>
-          <div className="tog-g" style={{ marginBottom: 14 }}>
-            <button className={`tog${contactType === "telegram" ? " on" : ""}`} onClick={() => { setContactType("telegram"); setContact(""); }}>Telegram</button>
-            <button className={`tog${contactType === "phone" ? " on" : ""}`} onClick={() => { setContactType("phone"); setContact(""); }}>Телефон</button>
-          </div>
-          <input
-            className={`ob-field${contact.trim().length >= 2 ? " ok" : ""}`}
-            placeholder={contactType === "telegram" ? "@username" : "+7 (___) ___-__-__"}
-            value={contact}
-            onChange={(e) => setContact(e.target.value)}
-            autoFocus
-            maxLength={60}
-          />
-          <div className="ob-field-hint">
-            {contactType === "telegram"
-              ? "Ваш Telegram @username — другие игроки смогут написать вам напрямую."
-              : "Номер телефона — виден только активированным игрокам клуба."}
-          </div>
-          <button className="ob-btn" disabled={contact.trim().length < 2} onClick={() => setStep(3)}>{t.step1.next}</button>
-        </>
-      ),
+      content: (() => {
+        const phoneErr = contactType === "phone" && contact.trim().length > 0 && !isValidPhone(contact);
+        const contactOk = contact.trim().length >= 2 && !phoneErr;
+        return (
+          <>
+            <div className="tog-g" style={{ marginBottom: hasTgUsername ? 14 : 0 }}>
+              <button
+                className={`tog${contactType === "telegram" ? " on" : ""}`}
+                disabled={!hasTgUsername}
+                style={!hasTgUsername ? { opacity: 0.35, cursor: "not-allowed" } : {}}
+                onClick={() => { if (hasTgUsername) { setContactType("telegram"); setContact(`@${tgUsername}`); } }}
+              >
+                Telegram
+              </button>
+              <button className={`tog${contactType === "phone" ? " on" : ""}`} onClick={() => { setContactType("phone"); setContact(""); }}>Телефон</button>
+            </div>
+            {!hasTgUsername && (
+              <div className="ob-field-hint" style={{ marginBottom: 10, marginTop: 8 }}>
+                У вас нет @username в Telegram — доступен только телефон. Вы сможете добавить Telegram позже в настройках.
+              </div>
+            )}
+            <input
+              className={`ob-field${contactOk ? " ok" : phoneErr ? " err" : ""}`}
+              placeholder={contactType === "telegram" ? "@username" : "+7 (___) ___-__-__"}
+              value={contact}
+              onChange={(e) => setContact(e.target.value)}
+              autoFocus
+              maxLength={60}
+            />
+            {phoneErr && (
+              <div className="ob-field-hint" style={{ color: "#ff8090" }}>
+                Неверный формат. Пример: +7 (999) 123-45-67
+              </div>
+            )}
+            <div className="ob-field-hint">
+              {contactType === "telegram"
+                ? "Другие игроки смогут написать вам напрямую."
+                : "Виден только активированным игрокам клуба."}
+            </div>
+            <button className="ob-btn" disabled={!contactOk} onClick={() => setStep(3)}>{t.step1.next}</button>
+          </>
+        );
+      })(),
     },
     {
       emoji: "⚙️", title: t.step2.title, sub: t.step2.sub,

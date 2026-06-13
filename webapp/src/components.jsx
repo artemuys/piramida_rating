@@ -170,7 +170,12 @@ export function Toasts() {
   return (
     <div className="toast-wrap">
       {toasts.map((x) => (
-        <div key={x.id} className={`toast ${x.kind === "err" ? "err" : x.kind === "ok" ? "ok" : ""}`}>{x.msg}</div>
+        <div
+          key={x.id}
+          className={`toast${x.kind === "err" ? " err" : x.kind === "ok" ? " ok" : ""}${x.dying ? " dying" : ""}`}
+        >
+          {x.msg}
+        </div>
       ))}
     </div>
   );

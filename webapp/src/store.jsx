@@ -23,7 +23,9 @@ export function AppProvider({ children }) {
 
   const toast = useCallback((msg, kind = "info") => {
     const id = ++toastSeq;
-    setToasts((prev) => [...prev.slice(-2), { id, msg, kind }]);
+    setToasts((prev) => [...prev.slice(-2), { id, msg, kind, dying: false }]);
+    // Mark as dying 300ms before removal so CSS exit animation plays
+    setTimeout(() => setToasts((prev) => prev.map((x) => x.id === id ? { ...x, dying: true } : x)), 3200);
     setTimeout(() => setToasts((prev) => prev.filter((x) => x.id !== id)), 3800);
     if (kind === "err") haptic("err");
   }, []);
