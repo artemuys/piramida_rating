@@ -67,17 +67,22 @@ export default async function requestsRoutes(app) {
     const days = [dayStr(0), dayStr(1), dayStr(2)];
     const rows = q(
       `SELECT r.id, r.day, r.time_slot, r.disc, r.pays,
-              p.id AS p_id, p.name, p.elo, p.role, p.contact
+              p.id AS p_id, p.name, p.elo, p.elo_pyramid, p.role, p.contact
        FROM requests r
        JOIN users p ON p.id = r.user_id
        WHERE r.day IN (?, ?, ?) AND r.user_id != ? AND p.activated_until > ?
-       ORDER BY r.day, r.time_slot, p.elo DESC`
+       ORDER BY r.day, r.time_slot,
+                CASE WHEN r.disc = 'pyramid' THEN p.elo_pyramid ELSE p.elo END DESC`
     ).all(days[0], days[1], days[2], u.id, t);
     return {
       days,
       feed: rows.map((r) => ({
         id: r.id, day: r.day, timeSlot: r.time_slot, disc: r.disc, pays: r.pays,
-        player: { id: r.p_id, name: r.name, elo: r.elo, role: r.role, contact: r.contact },
+        player: {
+          id: r.p_id, name: r.name,
+          elo: r.disc === 'pyramid' ? r.elo_pyramid : r.elo,
+          role: r.role, contact: r.contact,
+        },
       })),
     };
   });

@@ -242,18 +242,24 @@ export default async function adminRoutes(app) {
       // Закрыть сезон
       q(`UPDATE seasons SET closed = 1, ends_at = ? WHERE id = ?`).run(now(), seasonId);
 
-      // Топ-3 получают достижение season_master_N
-      const top3 = q(`SELECT id, name FROM users WHERE banned = 0 ORDER BY elo DESC LIMIT 3`).all();
-      for (const u of top3) {
-        const code = `season_master_${seasonId}`;
-        const exists = q(`SELECT 1 FROM achievements WHERE user_id = ? AND code = ?`).get(u.id, code);
-        if (!exists) {
-          q(`INSERT INTO achievements (user_id, code, earned_at, seen) VALUES (?, ?, ?, 0)`).run(u.id, code, now());
-          q(`INSERT INTO feed (type, actor_id, target_id, data, created_at) VALUES (?, ?, ?, ?, ?)`).run(
-            "achievement", u.id, null, JSON.stringify({ code, name: u.name }), now()
-          );
+      // Топ-3 получают достижение season_master_N — отдельно для каждой дисциплины
+      const grantSeasonMaster = (users, discipline) => {
+        const prefix = discipline === 'pyramid' ? 'p:' : '';
+        const code = `${prefix}season_master_${seasonId}`;
+        for (const u of users) {
+          const exists = q(`SELECT 1 FROM achievements WHERE user_id = ? AND code = ?`).get(u.id, code);
+          if (!exists) {
+            q(`INSERT INTO achievements (user_id, code, earned_at, seen) VALUES (?, ?, ?, 0)`).run(u.id, code, now());
+            q(`INSERT INTO feed (type, actor_id, target_id, data, discipline, created_at) VALUES (?, ?, ?, ?, ?, ?)`).run(
+              "achievement", u.id, null, JSON.stringify({ code, name: u.name }), discipline, now()
+            );
+          }
         }
-      }
+      };
+      const top3Pool    = q(`SELECT id, name FROM users WHERE banned = 0 ORDER BY elo DESC LIMIT 3`).all();
+      const top3Pyramid = q(`SELECT id, name FROM users WHERE banned = 0 ORDER BY elo_pyramid DESC LIMIT 3`).all();
+      grantSeasonMaster(top3Pool,    'pool');
+      grantSeasonMaster(top3Pyramid, 'pyramid');
 
       // Сброс ELO с частичным сохранением (30% от превышения над 1000) — обе дисциплины
       const ELO_START = 1000;
@@ -362,15 +368,23 @@ export default async function adminRoutes(app) {
       type: "object",
       required: ["elo"],
       additionalProperties: false,
-      properties: { elo: { type: "integer", minimum: 0, maximum: 9999 } },
+      properties: {
+        elo: { type: "integer", minimum: 0, maximum: 9999 },
+        discipline: { type: "string", enum: ["pool", "pyramid"] },
+      },
     },
   };
 
   app.post("/admin/users/:id/set-elo", { schema: setEloSchema }, (req) => {
     requireSuperAdmin(req);
     const target = getTarget(req);
-    q(`UPDATE users SET elo = ?, peak_elo = MAX(peak_elo, ?) WHERE id = ?`).run(req.body.elo, req.body.elo, target.id);
-    audit(req.user.id, target.id, `set_elo:${req.body.elo}`);
+    const { elo, discipline = "pool" } = req.body;
+    if (discipline === "pyramid") {
+      q(`UPDATE users SET elo_pyramid = ?, peak_elo_pyramid = MAX(peak_elo_pyramid, ?) WHERE id = ?`).run(elo, elo, target.id);
+    } else {
+      q(`UPDATE users SET elo = ?, peak_elo = MAX(peak_elo, ?) WHERE id = ?`).run(elo, elo, target.id);
+    }
+    audit(req.user.id, target.id, `set_elo:${discipline}:${elo}`);
     return { ok: true };
   });
 
@@ -599,51 +613,4 @@ export default async function adminRoutes(app) {
     return { ok: true };
   });
 
-  const resolveConflictSchema = {
-    body: {
-      type: "object",
-      required: ["winnerId"],
-      additionalProperties: false,
-      properties: { winnerId: { type: "integer" } },
-    },
-  };
-
-  app.post("/admin/conflicts/:id/resolve", { schema: resolveConflictSchema }, (req) => {
-    requireSuperAdmin(req);
-    const matchId = Number(req.params.id) || 0;
-    const match = q(`SELECT * FROM matches WHERE id = ? AND status = 'conflict'`).get(matchId);
-    if (!match) throw new ApiError(404, "not_found");
-    const { winnerId } = req.body;
-    if (winnerId !== match.initiator_id && winnerId !== match.opponent_id) throw new ApiError(400, "validation");
-
-    const loserId = winnerId === match.initiator_id ? match.opponent_id : match.initiator_id;
-    const isPyramid = match.discipline === "pyramid";
-    const K = 32;
-    const winner = q(`SELECT * FROM users WHERE id = ?`).get(winnerId);
-    const loser  = q(`SELECT * FROM users WHERE id = ?`).get(loserId);
-    const winnerElo = isPyramid ? (winner.elo_pyramid ?? 1000) : winner.elo;
-    const loserElo  = isPyramid ? (loser.elo_pyramid  ?? 1000) : loser.elo;
-    const expected = 1 / (1 + Math.pow(10, (loserElo - winnerElo) / 400));
-    const delta = Math.round(K * (1 - expected));
-
-    tx(() => {
-      q(`UPDATE matches SET status = 'confirmed', winner_id = ?, delta = ?,
-         initiator_elo_after = ?, opponent_elo_after = ?, resolved_at = ?
-         WHERE id = ?`).run(
-        winnerId, delta,
-        match.initiator_id === winnerId ? winnerElo + delta : loserElo - delta,
-        match.opponent_id === winnerId ? winnerElo + delta : loserElo - delta,
-        now(), matchId
-      );
-      if (isPyramid) {
-        q(`UPDATE users SET elo_pyramid = elo_pyramid + ?, wins_count_pyramid = wins_count_pyramid + 1, matches_count_pyramid = matches_count_pyramid + 1 WHERE id = ?`).run(delta, winnerId);
-        q(`UPDATE users SET elo_pyramid = MAX(0, elo_pyramid - ?), matches_count_pyramid = matches_count_pyramid + 1 WHERE id = ?`).run(delta, loserId);
-      } else {
-        q(`UPDATE users SET elo = elo + ?, wins_count = wins_count + 1, matches_count = matches_count + 1 WHERE id = ?`).run(delta, winnerId);
-        q(`UPDATE users SET elo = MAX(0, elo - ?), matches_count = matches_count + 1 WHERE id = ?`).run(delta, loserId);
-      }
-      audit(req.user.id, null, `resolve_conflict:${matchId}:winner=${winnerId}`);
-    });
-    return { ok: true };
-  });
 }

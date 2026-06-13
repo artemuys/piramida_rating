@@ -573,13 +573,13 @@ function ConflictsTab({ toast, toastError }) {
 
   useEffect(() => { load(); }, [load]);
 
-  async function resolve(matchId, winnerId, winnerName) {
-    if (!(await tgConfirm(`Засчитать победу ${winnerName}?`))) return;
+  async function cancel(matchId) {
+    if (!(await tgConfirm("Отменить матч? Результат не будет засчитан."))) return;
     setBusy(true);
     try {
-      await api.post(`/admin/conflicts/${matchId}/resolve`, { winnerId });
+      await api.post(`/admin/matches/${matchId}/cancel`);
       haptic("ok");
-      toast("✓ Конфликт разрешён", "ok");
+      toast("✓ Матч отменён", "ok");
       load();
     } catch (e) { toastError(e); }
     finally { setBusy(false); }
@@ -609,24 +609,14 @@ function ConflictsTab({ toast, toastError }) {
             {c.initiatorName} заявил: {c.initiatorClaim === "win" ? "победа" : "поражение"} ·{" "}
             {c.opponentName} заявил: {c.opponentClaim === "win" ? "победа" : "поражение"}
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              className="btn-tonal green"
-              style={{ padding: "6px 12px", fontSize: 12, width: "auto", flex: 1 }}
-              disabled={busy}
-              onClick={() => resolve(c.id, c.initiatorId, c.initiatorName)}
-            >
-              ✓ {c.initiatorName}
-            </button>
-            <button
-              className="btn-tonal green"
-              style={{ padding: "6px 12px", fontSize: 12, width: "auto", flex: 1 }}
-              disabled={busy}
-              onClick={() => resolve(c.id, c.opponentId, c.opponentName)}
-            >
-              ✓ {c.opponentName}
-            </button>
-          </div>
+          <button
+            className="btn-tonal"
+            style={{ padding: "6px 12px", fontSize: 12, width: "auto" }}
+            disabled={busy}
+            onClick={() => cancel(c.id)}
+          >
+            Отменить матч
+          </button>
         </div>
       ))}
     </div>
