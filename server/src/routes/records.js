@@ -196,8 +196,10 @@ export default async function recordsRoutes(app) {
     if (upset) {
       const loserElo = upset.winner_id === upset.initiator_id ? upset.opponent_elo_before : upset.initiator_elo_before;
       const winnerElo = upset.winner_id === upset.initiator_id ? upset.initiator_elo_before : upset.opponent_elo_before;
+      const loserId = upset.winner_id === upset.initiator_id ? upset.opponent_id : upset.initiator_id;
       upsetRecord = {
         winnerId: upset.winner_id,
+        loserId,
         winnerName: upset.w_name,
         loserName: upset.l_name,
         diff: loserElo - winnerElo,

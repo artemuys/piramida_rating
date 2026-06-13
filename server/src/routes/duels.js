@@ -74,6 +74,7 @@ export default async function duelsRoutes(app) {
       const { opponentId, message = "" } = req.body;
 
       if (opponentId === u.id) throw new ApiError(400, "self_match");
+      if (!u.contact) throw new ApiError(403, "no_contact");
       const opp = q(`SELECT * FROM users WHERE id = ?`).get(opponentId);
       if (!opp) throw new ApiError(404, "player_not_found");
 

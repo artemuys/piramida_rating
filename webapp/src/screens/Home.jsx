@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { useApp } from "../store.jsx";
-import { Ava, Crown, RulesModal, Spinner, Stats, Empty, RankBadge, LevelBar, StreakBadge } from "../components.jsx";
+import { Ava, Crown, RulesModal, Spinner, Stats, Empty, RankBadge, LevelBar, StreakBadge, StreakProgress } from "../components.jsx";
 import { useNow, fmtElapsed, fmtDateTime } from "../util.js";
 import { haptic } from "../telegram.js";
 import { ACH_META } from "./Achievements.jsx";
@@ -101,9 +101,29 @@ function SearchBlock() {
   );
 }
 
+function AchFeedModal({ code, onClose }) {
+  const meta = ACH_META[code] || { icon: "🏅", label: code, desc: "" };
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-grabber" />
+        <div className="modal-header">
+          <span className="modal-icon">{meta.icon}</span>
+          <div className="modal-result-lbl" style={{ color: "#FFD60A", fontSize: 22 }}>{meta.label}</div>
+          <div className="modal-sub">{meta.desc}</div>
+        </div>
+        <div className="modal-body" style={{ paddingTop: 4 }}>
+          <button className="modal-btn-done" onClick={onClose}>Понятно</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function LiveFeed({ navigate }) {
   const [feed, setFeed] = useState(null);
   const [announcements, setAnnouncements] = useState([]);
+  const [achModal, setAchModal] = useState(null); // { code }
 
   useEffect(() => {
     api.get("/feed").then(r => setFeed(r.feed)).catch(() => setFeed([]));
@@ -113,62 +133,89 @@ function LiveFeed({ navigate }) {
   if (!feed && !announcements.length) return null;
   if (feed !== null && feed.length === 0 && !announcements.length) return null;
 
-  function feedText(item) {
+  function renderFeedItem(item) {
     const d = item.data || {};
     switch (item.type) {
-      case "match_win":
-        return `🏆 ${d.winnerName || item.actorName} обыграл ${d.loserName || item.targetName} (+${d.delta || "?"})`;
+      case "match_win": {
+        const winnerId = d.winnerId || item.actorId;
+        const loserId = d.loserId || item.targetId;
+        const winnerName = d.winnerName || item.actorName;
+        const loserName = d.loserName || item.targetName;
+        return (
+          <div className="feed-text">
+            🏆{" "}
+            <span className="feed-name-link" onClick={() => winnerId && navigate("player", { playerId: winnerId, title: winnerName })}>{winnerName}</span>
+            {" обыграл "}
+            <span className="feed-name-link" onClick={() => loserId && navigate("player", { playerId: loserId, title: loserName })}>{loserName}</span>
+            {" ("}+{d.delta || "?"}{")" }
+          </div>
+        );
+      }
       case "achievement": {
         const meta = ACH_META[d.code] || { icon: "🏅", label: d.code };
-        return `${meta.icon} ${d.name || item.actorName} получил «${meta.label}»`;
+        const actorName = d.name || item.actorName;
+        return (
+          <div className="feed-text">
+            {meta.icon}{" "}
+            <span className="feed-name-link" onClick={() => item.actorId && navigate("player", { playerId: item.actorId, title: actorName })}>{actorName}</span>
+            {" получил "}
+            <span className="feed-ach-link" onClick={() => setAchModal({ code: d.code })}>«{meta.label}»</span>
+          </div>
+        );
       }
-      case "rank_up":
-        return `⬆️ ${d.name || item.actorName} достиг ${d.rank}`;
+      case "rank_up": {
+        const name = d.name || item.actorName;
+        return (
+          <div className="feed-text">
+            ⬆️{" "}
+            <span className="feed-name-link" onClick={() => item.actorId && navigate("player", { playerId: item.actorId, title: name })}>{name}</span>
+            {" достиг "}{d.rank}
+          </div>
+        );
+      }
       case "season_end":
-        return "🔄 Новый сезон начался!";
-      case "new_player":
-        return `👋 ${d.name || item.actorName} присоединился к клубу`;
+        return <div className="feed-text">🔄 Новый сезон начался!</div>;
+      case "new_player": {
+        const name = d.name || item.actorName;
+        return (
+          <div className="feed-text">
+            👋{" "}
+            <span className="feed-name-link" onClick={() => item.actorId && navigate("player", { playerId: item.actorId, title: name })}>{name}</span>
+            {" присоединился к клубу"}
+          </div>
+        );
+      }
       default:
-        return `• ${item.actorName || ""}`;
+        return <div className="feed-text">• {item.actorName || ""}</div>;
     }
   }
 
-  function getActorId(item) {
-    if (item.type === "match_win") return item.actorId;
-    if (item.type === "achievement") return item.actorId;
-    return null;
-  }
-
   return (
-    <div className="card feed-card">
-      <div className="feed-header">
-        <span className="feed-title">🔴 Живая лента клуба</span>
-      </div>
-      {announcements.map(a => (
-        <div key={`ann-${a.id}`} className="feed-item feed-announce">
-          <span className="feed-icon">📢</span>
-          <div className="feed-content">
-            <div className="feed-text">{a.text}</div>
-            <div className="feed-meta">{a.authorName}</div>
-          </div>
+    <>
+      {achModal && <AchFeedModal code={achModal.code} onClose={() => setAchModal(null)} />}
+      <div className="card feed-card">
+        <div className="feed-header">
+          <span className="feed-title">🔴 Живая лента клуба</span>
         </div>
-      ))}
-      {(feed || []).map(item => {
-        const actorId = getActorId(item);
-        return (
-          <div
-            key={item.id}
-            className={`feed-item${actorId ? " clickable" : ""}`}
-            onClick={() => actorId && navigate("player", { playerId: actorId, title: item.actorName })}
-          >
+        {announcements.map(a => (
+          <div key={`ann-${a.id}`} className="feed-item feed-announce">
+            <span className="feed-icon">📢</span>
             <div className="feed-content">
-              <div className="feed-text">{feedText(item)}</div>
+              <div className="feed-text">{a.text}</div>
+              <div className="feed-meta">{a.authorName}</div>
+            </div>
+          </div>
+        ))}
+        {(feed || []).map(item => (
+          <div key={item.id} className="feed-item">
+            <div className="feed-content">
+              {renderFeedItem(item)}
               <div className="feed-meta">{fmtElapsed(Date.now() - item.createdAt)} назад</div>
             </div>
           </div>
-        );
-      })}
-    </div>
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -191,8 +238,8 @@ export function Home({ navigate }) {
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
               <RankBadge elo={me.elo} />
-              {me.streak !== 0 && <StreakBadge streak={me.streak} />}
             </div>
+            <StreakProgress streak={me.streak} />
             <div className="user-sub" style={{ marginTop: 6 }}>
               {t.idLabel} {me.id}
               {me.isCheckedIn

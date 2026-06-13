@@ -147,6 +147,7 @@ export default async function matchesRoutes(app) {
         );
 
       addFeedEvent("match_win", winner.id, loser.id, {
+        winnerId: winner.id, loserId: loser.id,
         winnerName: winner.name, loserName: loser.name, delta: d,
       });
 

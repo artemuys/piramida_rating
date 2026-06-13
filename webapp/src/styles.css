@@ -297,15 +297,18 @@ body { color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Disp
 .ach-check { position: absolute; top: 8px; right: 8px; font-size: 12px; color: #30D158; font-weight: 700; }
 
 /* ─── RECORDS ────────────────────────────────────────────── */
-.record-row { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid rgba(255,255,255,.08); }
+.record-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 20px; border-bottom: 1px solid rgba(255,255,255,.08); }
 .record-row:last-child { border-bottom: none; }
-.record-row.clickable { cursor: pointer; }
-.record-row.clickable:active { background: rgba(255,255,255,.04); }
-.record-icon { font-size: 22px; flex-shrink: 0; width: 32px; text-align: center; }
+.record-icon { font-size: 22px; flex-shrink: 0; width: 32px; text-align: center; margin-top: 2px; }
 .record-body { flex: 1; min-width: 0; }
-.record-label { font-size: 15px; font-weight: 500; letter-spacing: -.01em; }
+.record-label { font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
+.record-desc { font-size: 12px; color: rgba(255,255,255,.35); margin-top: 2px; line-height: 1.3; }
 .record-sub { font-size: 13px; color: rgba(255,255,255,.45); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.record-value { font-size: 15px; font-weight: 700; color: #FFD60A; white-space: nowrap; flex-shrink: 0; }
+.record-sub-names { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+.record-name-link { font-size: 13px; color: #0A84FF; cursor: pointer; font-weight: 500; }
+.record-name-link:active { opacity: .6; }
+.record-vs { font-size: 12px; color: rgba(255,255,255,.3); }
+.record-value { font-size: 15px; font-weight: 700; color: #FFD60A; white-space: nowrap; flex-shrink: 0; margin-top: 2px; }
 
 /* ─── LIVE FEED ──────────────────────────────────────────── */
 .feed-card { overflow: hidden; }
@@ -344,6 +347,48 @@ body { color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Disp
 .announce-author { font-size: 12px; color: #0A84FF; font-weight: 600; margin-bottom: 5px; }
 .announce-text { font-size: 15px; line-height: 1.5; letter-spacing: -.01em; }
 .announce-date { font-size: 11px; color: rgba(255,255,255,.3); margin-top: 5px; }
+
+/* ─── STREAK PROGRESS BAR ───────────────────────────────── */
+.streak-progress-wrap { padding: 8px 0 4px; }
+.streak-progress-row { display: flex; gap: 5px; margin-bottom: 5px; }
+.streak-progress-dot { flex: 1; height: 6px; border-radius: 3px; transition: background .3s, box-shadow .3s; }
+.sp-win  { background: #FF9500; box-shadow: 0 0 6px rgba(255,149,0,.5); }
+.sp-lose { background: #64D2FF; box-shadow: 0 0 6px rgba(100,210,255,.4); }
+.sp-empty { background: rgba(255,255,255,.1); }
+.streak-progress-lbl { font-size: 12px; color: rgba(255,255,255,.4); letter-spacing: -.01em; }
+
+/* ─── FEED INLINE LINKS ──────────────────────────────────── */
+.feed-name-link { color: #0A84FF; cursor: pointer; font-weight: 500; }
+.feed-name-link:active { opacity: .6; }
+.feed-ach-link { color: #FFD60A; cursor: pointer; font-weight: 500; text-decoration: underline; text-decoration-color: rgba(255,214,10,.4); }
+.feed-ach-link:active { opacity: .6; }
+
+/* ─── DUEL CONTACT ROW ───────────────────────────────────── */
+.duel-contact-row { background: rgba(10,132,255,.08); border: 1px solid rgba(10,132,255,.2); border-radius: 12px; padding: 10px 14px; display: flex; flex-direction: column; gap: 3px; }
+.duel-contact-lbl { font-size: 11px; color: rgba(255,255,255,.4); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+.duel-contact-val { font-size: 15px; font-weight: 500; }
+
+/* ─── XP ROW IN MATCH RESULT ─────────────────────────────── */
+.modal-xp-row { display: flex; align-items: center; gap: 8px; background: rgba(255,214,10,.08); border: 1px solid rgba(255,214,10,.18); border-radius: 12px; padding: 10px 14px; margin-bottom: 14px; }
+.modal-xp-icon { font-size: 20px; }
+.modal-xp-label { flex: 1; font-size: 15px; color: rgba(255,255,255,.6); }
+.modal-xp-gain { font-size: 18px; font-weight: 700; color: #FFD60A; animation: xp-pop .5s cubic-bezier(.34,1.56,.64,1) .3s both; }
+@keyframes xp-pop { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+/* ─── ACHIEVEMENT UNLOCK MODAL ───────────────────────────── */
+@keyframes ach-rays { 0% { transform: rotate(0deg); opacity: .6; } 100% { transform: rotate(360deg); opacity: .6; } }
+@keyframes ach-icon-bounce { 0% { transform: scale(0) rotate(-20deg); } 60% { transform: scale(1.2) rotate(5deg); } 80% { transform: scale(.95) rotate(-2deg); } 100% { transform: scale(1) rotate(0deg); } }
+@keyframes ach-badge-in { 0% { opacity: 0; transform: translateY(12px); } 100% { opacity: 1; transform: translateY(0); } }
+
+.ach-unlock-overlay { background: rgba(0,0,0,.72); }
+.ach-unlock-modal { border-radius: 20px; text-align: center; overflow: visible; position: relative; }
+.ach-unlock-glow { position: absolute; inset: 0; border-radius: 20px; pointer-events: none; }
+.ach-unlock-icon-wrap { position: relative; display: inline-flex; align-items: center; justify-content: center; margin: 32px auto 16px; width: 100px; height: 100px; }
+.ach-unlock-rays { position: absolute; inset: -12px; border-radius: 50%; background: conic-gradient(rgba(255,214,10,.35) 0deg 30deg, transparent 30deg 60deg, rgba(255,214,10,.2) 60deg 90deg, transparent 90deg 120deg, rgba(255,214,10,.35) 120deg 150deg, transparent 150deg 180deg, rgba(255,214,10,.2) 180deg 210deg, transparent 210deg 240deg, rgba(255,214,10,.35) 240deg 270deg, transparent 270deg 300deg, rgba(255,214,10,.2) 300deg 330deg, transparent 330deg 360deg); animation: ach-rays 8s linear infinite; }
+.ach-unlock-icon { font-size: 64px; line-height: 1; animation: ach-icon-bounce .7s cubic-bezier(.34,1.56,.64,1) .15s both; position: relative; z-index: 1; }
+.ach-unlock-badge { display: inline-block; background: rgba(255,214,10,.15); border: 1px solid rgba(255,214,10,.3); color: #FFD60A; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 4px 12px; border-radius: 20px; margin-bottom: 14px; animation: ach-badge-in .4s ease .4s both; }
+.ach-unlock-label { font-size: 26px; font-weight: 700; letter-spacing: -.03em; color: #fff; padding: 0 24px; margin-bottom: 10px; animation: ach-badge-in .4s ease .5s both; }
+.ach-unlock-desc { font-size: 15px; color: rgba(255,255,255,.5); padding: 0 28px; line-height: 1.5; animation: ach-badge-in .4s ease .6s both; }
 
 /* ─── MATCH RESULT WIN STREAK ────────────────────────────── */
 @keyframes shimmer {

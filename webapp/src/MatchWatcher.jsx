@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "./api.js";
 import { useApp } from "./store.jsx";
-import { Ava, ClockAnim, MatchResultModal } from "./components.jsx";
+import { Ava, ClockAnim, MatchResultModal, AchievementUnlockModal } from "./components.jsx";
 import { useNow, fmtCountdown } from "./util.js";
 import { haptic } from "./telegram.js";
 
@@ -13,10 +13,11 @@ import { haptic } from "./telegram.js";
  *  - модалку с итогом (confirmed / conflict / timeout / cancelled).
  */
 export function MatchWatcher() {
-  const { me, t, refreshMe, toastError, matchPoke } = useApp();
+  const { me, t, refreshMe, updateMe, toastError, matchPoke } = useApp();
   const [active, setActive] = useState({ incoming: null, outgoing: null, unseen: null });
   const [skew, setSkew] = useState(0); // serverNow - clientNow
   const [resultMatch, setResultMatch] = useState(null);
+  const [achQueue, setAchQueue] = useState([]); // очередь незасмотренных достижений
   const [busy, setBusy] = useState(false);
   const aliveRef = useRef(true);
 
@@ -69,6 +70,16 @@ export function MatchWatcher() {
       setResultMatch(r.match);
       haptic(r.match.status === "confirmed" ? "ok" : "err");
       api.post(`/matches/${matchId}/ack`).catch(() => {});
+      // Немедленно обновляем ELO на главной — оптимистичное обновление
+      if (r.match.status === "confirmed" && r.match.my?.eloAfter != null) {
+        const xpDelta = r.match.iWon ? 20 : 10;
+        updateMe({
+          elo: r.match.my.eloAfter,
+          matchesCount: (me?.matchesCount ?? 0) + 1,
+          winsCount: (me?.winsCount ?? 0) + (r.match.iWon ? 1 : 0),
+          xp: (me?.xp ?? 0) + xpDelta,
+        });
+      }
       refreshMe();
     } catch (e) {
       toastError(e);
@@ -93,14 +104,40 @@ export function MatchWatcher() {
   }
 
   async function closeResult() {
-    const id = resultMatch?.id;
+    const match = resultMatch;
     setResultMatch(null);
     setActive((a) => ({ ...a, unseen: null }));
-    if (id) api.post(`/matches/${id}/ack`).catch(() => {});
-    refreshMe();
+    if (match?.id) api.post(`/matches/${match.id}/ack`).catch(() => {});
+    // Немедленный оптимистичный апдейт для игрока А (который получил unseen)
+    if (match?.status === "confirmed" && match?.my?.eloAfter != null) {
+      const xpDelta = match.iWon ? 20 : 10;
+      updateMe({
+        elo: match.my.eloAfter,
+        matchesCount: (me?.matchesCount ?? 0) + 1,
+        winsCount: (me?.winsCount ?? 0) + (match.iWon ? 1 : 0),
+        xp: (me?.xp ?? 0) + xpDelta,
+      });
+    }
+    const freshMe = await refreshMe();
+    // Показать незасмотренные достижения
+    if ((freshMe?.unseenAchievements ?? 0) > 0) {
+      try {
+        const r = await api.get("/achievements/me");
+        const newOnes = r.achievements.filter(a => !a.seen);
+        if (newOnes.length > 0) {
+          haptic("ok");
+          setAchQueue(newOnes.map(a => a.code));
+        }
+      } catch { /* тихо */ }
+    }
     poll();
   }
 
+  function dismissAch() {
+    setAchQueue(q => q.slice(1));
+  }
+
+  if (achQueue.length > 0) return <AchievementUnlockModal code={achQueue[0]} onClose={dismissAch} />;
   if (resultMatch) return <MatchResultModal match={resultMatch} onClose={closeResult} />;
 
   if (active.incoming) {

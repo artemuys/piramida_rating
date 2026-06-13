@@ -7,6 +7,7 @@ import { haptic } from "../telegram.js";
 export function Settings() {
   const { me, t, refreshMe, toastError } = useApp();
   const [name, setName] = useState(me.name);
+  const [contact, setContact] = useState(me.contact || "");
   const [disc, setDisc] = useState(me.prefDisc);
   const [pays, setPays] = useState(me.prefPays);
   const [lang, setLang] = useState(me.lang);
@@ -19,6 +20,7 @@ export function Settings() {
     try {
       await api.patch("/me", {
         name: name.trim(),
+        contact: contact.trim(),
         lang,
         prefDisc: disc,
         prefPays: pays,
@@ -43,6 +45,17 @@ export function Settings() {
           <div className="s-lbl">{t.settings.name}</div>
           <input className="s-inp" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} />
         </div>
+        <div className="s-row">
+          <div className="s-lbl">📩 Способ связи <span style={{ color: "#FF453A", fontSize: 11 }}>обязательно</span></div>
+          <input
+            className="s-inp"
+            value={contact}
+            maxLength={120}
+            placeholder="@username, телефон, telegram..."
+            onChange={(e) => setContact(e.target.value)}
+          />
+        </div>
+        <div className="s-hint">Нужно для поиска, заявок и дуэлей. Видно только активированным игрокам.</div>
       </div>
 
       <div className="card">
@@ -90,7 +103,7 @@ export function Settings() {
       <button
         className="btn-primary"
         style={saved ? { background: "#30D158", color: "#000" } : {}}
-        disabled={busy || name.trim().length < 2}
+        disabled={busy || name.trim().length < 2 || contact.trim().length < 2}
         onClick={save}
       >
         {saved ? "✓" : t.settings.save}

@@ -104,12 +104,15 @@ export function Duels({ navigate }) {
 }
 
 export function DuelModal({ opponent, onClose, onSent }) {
-  const { toastError, toast } = useApp();
+  const { me, toastError, toast } = useApp();
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const noContact = !me?.contact;
+
   async function send() {
     if (busy) return;
+    if (noContact) { toast("⚠️ Укажи способ связи в настройках", "err"); return; }
     setBusy(true);
     try {
       await api.post("/duels", { opponentId: opponent.id, message: msg.trim() });
@@ -131,20 +134,27 @@ export function DuelModal({ opponent, onClose, onSent }) {
           <div className="modal-sub">Бросаешь вызов: <strong>{opponent.name}</strong></div>
         </div>
         <div className="modal-body">
+          <div className="duel-contact-row">
+            <span className="duel-contact-lbl">📩 Мой способ связи</span>
+            <span className="duel-contact-val" style={{ color: noContact ? "#FF453A" : "#0A84FF" }}>
+              {noContact ? "не указан — зайди в настройки" : me.contact}
+            </span>
+          </div>
           <textarea
             className="duel-textarea"
-            placeholder="Сообщение (способ связи, время…) — необязательно"
+            placeholder="Сообщение сопернику: время, место, условия… (необязательно)"
             maxLength={200}
             value={msg}
             onChange={e => setMsg(e.target.value)}
             rows={3}
+            style={{ marginTop: 10 }}
           />
           <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
             <button className="btn-tonal" style={{ flex: 1 }} onClick={onClose}>Отмена</button>
             <button
               className="btn-primary"
-              style={{ flex: 1, background: "linear-gradient(135deg,#FF9F0A,#FF6B0A)" }}
-              disabled={busy}
+              style={{ flex: 1, background: noContact ? undefined : "linear-gradient(135deg,#FF9F0A,#FF6B0A)" }}
+              disabled={busy || noContact}
               onClick={send}
             >
               ⚔️ Бросить вызов

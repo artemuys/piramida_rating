@@ -69,10 +69,11 @@ export function AppProvider({ children }) {
   }, [phase, refreshMe]);
 
   const pokeMatches = useCallback(() => setMatchPoke((n) => n + 1), []);
+  const updateMe = useCallback((partial) => setMe((prev) => prev ? { ...prev, ...partial } : prev), []);
 
   const value = useMemo(
-    () => ({ me, setMe, phase, setPhase, refreshMe, lang, obLang, setObLang, t, toasts, toast, toastError, matchPoke, pokeMatches }),
-    [me, phase, refreshMe, lang, obLang, t, toasts, toast, toastError, matchPoke, pokeMatches]
+    () => ({ me, setMe, updateMe, phase, setPhase, refreshMe, lang, obLang, setObLang, t, toasts, toast, toastError, matchPoke, pokeMatches }),
+    [me, updateMe, phase, refreshMe, lang, obLang, t, toasts, toast, toastError, matchPoke, pokeMatches]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

@@ -1,4 +1,4 @@
-import { Component } from "react";
+import { Component, useEffect, useRef, useState } from "react";
 import { useApp } from "./store.jsx";
 import { avaColor, initials, winPct, rankOf, xpProgress } from "./util.js";
 
@@ -74,6 +74,33 @@ export function StreakBadge({ streak }) {
     <span className={`streak-badge${wins ? " streak-win" : " streak-lose"}`}>
       {wins ? "🔥" : "❄️"} {count}
     </span>
+  );
+}
+
+export function StreakProgress({ streak }) {
+  const GOAL = 5;
+  const isWin = streak > 0;
+  const isLose = streak < 0;
+  const count = Math.abs(streak ?? 0);
+  const filled = Math.min(count, GOAL);
+  const label = isWin
+    ? (count >= GOAL ? `🔥 Серия ${count}!` : `🔥 Серия побед: ${count} / ${GOAL}`)
+    : isLose
+    ? (count >= GOAL ? `❄️ Проигрышная серия: ${count}` : `❄️ Поражений подряд: ${count} / ${GOAL}`)
+    : "Серия: 0";
+
+  return (
+    <div className="streak-progress-wrap">
+      <div className="streak-progress-row">
+        {Array.from({ length: GOAL }).map((_, i) => (
+          <div
+            key={i}
+            className={`streak-progress-dot ${i < filled ? (isWin ? "sp-win" : "sp-lose") : "sp-empty"}`}
+          />
+        ))}
+      </div>
+      <div className="streak-progress-lbl">{label}</div>
+    </div>
   );
 }
 
@@ -178,12 +205,15 @@ export function MatchResultModal({ match, onClose }) {
     const cardCls = side === "win" ? "modal-player-win" : side === "lose" ? "modal-player-lose" : "modal-player-neutral";
     const d = side === "win" ? match.delta : side === "lose" ? -match.delta : 0;
     const color = avaColor(user.id);
+    const displayElo = resolved ? eloAfter : eloBefore ?? user.elo;
     return (
       <div className={`modal-player ${cardCls}`}>
         {isMe && <div className="modal-you">{t.rating.you}</div>}
         <div className="modal-player-ava" style={{ background: color + "28", color }}>{initials(user.name)}</div>
         <div className="modal-player-name">{user.name}</div>
-        <div className={`modal-player-elo-new ${eloCls}`}>{resolved ? eloAfter : eloBefore ?? user.elo}</div>
+        <div className={`modal-player-elo-new ${eloCls}`}>
+          {resolved ? <AnimatedNumber value={displayElo} duration={900} /> : displayElo}
+        </div>
         {resolved
           ? <div className={`modal-delta ${side === "win" ? "modal-delta-win" : "modal-delta-lose"}`}>{d > 0 ? "+" : ""}{d} {t.elo}</div>
           : <div className="modal-delta modal-delta-neutral">{t.modal.noChange}</div>}
@@ -195,6 +225,7 @@ export function MatchResultModal({ match, onClose }) {
   const theirSide = resolved ? (match.iWon ? "lose" : "win") : "neutral";
 
   const newStreak = match.status === "confirmed" && match.iWon ? (me.streak > 0 ? me.streak : 1) : null;
+  const xpGain = resolved ? (match.iWon ? 20 : 10) : null;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -216,12 +247,93 @@ export function MatchResultModal({ match, onClose }) {
             <div className="modal-vs">VS</div>
             <PlayerCard user={opp} side={theirSide} eloBefore={match.their?.eloBefore} eloAfter={match.their?.eloAfter} />
           </div>
+          {xpGain && (
+            <div className="modal-xp-row">
+              <span className="modal-xp-icon">⭐</span>
+              <span className="modal-xp-label">Опыт</span>
+              <span className="modal-xp-gain">+{xpGain} XP</span>
+            </div>
+          )}
           <div className="modal-divider" />
           <button className="modal-btn-done" onClick={onClose}>{t.modal.done}</button>
         </div>
       </div>
     </div>
   );
+}
+
+export function AchievementUnlockModal({ code, earnedAt, onClose }) {
+  const { ACH_META_IMPORT } = {};
+  // Import inline to avoid circular deps
+  const META = {
+    calibration:   { icon: "🎯", label: "Калибровка пройдена",     desc: "Сыграть первые 10 матчей" },
+    elite:         { icon: "👑", label: "Элита",                   desc: "Войти в топ-3 клуба по рейтингу" },
+    new_peak_1100: { icon: "📈", label: "Новый пик · 1100",        desc: "Достичь рейтинга 1100" },
+    new_peak_1200: { icon: "📈", label: "Новый пик · 1200",        desc: "Достичь рейтинга 1200" },
+    new_peak_1300: { icon: "📈", label: "Новый пик · 1300",        desc: "Достичь рейтинга 1300" },
+    new_peak_1400: { icon: "📈", label: "Новый пик · 1400",        desc: "Достичь рейтинга 1400" },
+    new_peak_1500: { icon: "📈", label: "Новый пик · 1500",        desc: "Достичь рейтинга 1500" },
+    on_fire_5:     { icon: "🔥", label: "На кураже",               desc: "5 побед подряд" },
+    inferno_7:     { icon: "🔥", label: "В огне",                  desc: "7 побед подряд" },
+    immortal_10:   { icon: "⚡", label: "Бессмертный",             desc: "10 побед подряд" },
+    groundhog:     { icon: "😤", label: "День сурка",              desc: "Победить одного и того же 10 раз за день" },
+    rollercoaster: { icon: "🎢", label: "Американские горки",      desc: "В/П/В/П/В/П — 6 матчей подряд" },
+    own_atmo:      { icon: "🫂", label: "Своя атмосфера",          desc: "10 матчей подряд с одним соперником" },
+    headhunter:    { icon: "🎯", label: "Охотник за скальпами",    desc: "10 разных соперников за неделю" },
+    extrovert:     { icon: "🌍", label: "Экстраверт",              desc: "Сыграть с 20 уникальными игроками" },
+    veteran_20:    { icon: "🏅", label: "Завсегдатай · 20",        desc: "20 матчей сыграно" },
+    veteran_50:    { icon: "🏅", label: "Завсегдатай · 50",        desc: "50 матчей сыграно" },
+    veteran_100:   { icon: "🥇", label: "Завсегдатай · 100",       desc: "100 матчей сыграно" },
+    veteran_200:   { icon: "🥇", label: "Завсегдатай · 200",       desc: "200 матчей сыграно" },
+    veteran_500:   { icon: "💎", label: "Легенда · 500",           desc: "500 матчей сыграно" },
+    veteran_1000:  { icon: "👑", label: "Легенда · 1000",          desc: "1000 матчей сыграно" },
+    bad_day:       { icon: "😤", label: "Не твой день",            desc: "6 поражений подряд" },
+    main_donor:    { icon: "💸", label: "Главный спонсор",         desc: "Проиграть одному 4 раза за день" },
+    tried:         { icon: "🙏", label: "Ты пытался",              desc: "Проиграть игроку из топ-3" },
+    phoenix:       { icon: "🦅", label: "Феникс",                  desc: "Выиграть после 4+ поражений подряд" },
+  };
+  const meta = META[code] || { icon: "🏅", label: code, desc: "" };
+  return (
+    <div className="modal-overlay center ach-unlock-overlay" onClick={onClose}>
+      <div className="modal ach-unlock-modal" onClick={e => e.stopPropagation()}>
+        <div className="ach-unlock-glow" style={{ background: "radial-gradient(circle at 50% 0%, rgba(255,214,10,.18) 0%, transparent 70%)" }} />
+        <div className="ach-unlock-icon-wrap">
+          <div className="ach-unlock-icon">{meta.icon}</div>
+          <div className="ach-unlock-rays" />
+        </div>
+        <div className="ach-unlock-badge">🏆 Новое достижение!</div>
+        <div className="ach-unlock-label">{meta.label}</div>
+        <div className="ach-unlock-desc">{meta.desc}</div>
+        <button className="modal-btn-done" style={{ margin: "20px 20px 32px", width: "calc(100% - 40px)" }} onClick={onClose}>
+          Отлично!
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AnimatedNumber({ value, duration = 800 }) {
+  const [display, setDisplay] = useState(value);
+  const startRef = useRef(null);
+  const startValRef = useRef(value);
+
+  useEffect(() => {
+    startRef.current = null;
+    startValRef.current = display;
+    const target = value;
+    const start = startValRef.current;
+    if (start === target) return;
+    const step = (ts) => {
+      if (!startRef.current) startRef.current = ts;
+      const prog = Math.min((ts - startRef.current) / duration, 1);
+      const ease = 1 - Math.pow(1 - prog, 3);
+      setDisplay(Math.round(start + (target - start) * ease));
+      if (prog < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return <>{display}</>;
 }
 
 export class ErrorBoundary extends Component {
