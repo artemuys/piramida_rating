@@ -18,7 +18,7 @@ export function Onboarding() {
   const [name, setName] = useState("");
   const tgUsername = getTgUsername();
   const hasTgUsername = !!tgUsername;
-  const [contact, setContact] = useState(hasTgUsername ? `@${tgUsername}` : "");
+  const [phone, setPhone] = useState("");
   const [contactType, setContactType] = useState(hasTgUsername ? "telegram" : "phone");
   const [disc, setDisc] = useState(2);
   const [pays, setPays] = useState(0);
@@ -42,9 +42,10 @@ export function Onboarding() {
     if (busy) return;
     setBusy(true);
     try {
+      const contactValue = contactType === "telegram" ? `@${tgUsername}` : phone.trim();
       await api.post("/auth/onboard", {
         name: name.trim(),
-        contact: contact.trim(),
+        contact: contactValue,
         contactType,
         lang: chosen,
         prefDisc: disc,
@@ -120,37 +121,49 @@ export function Onboarding() {
     {
       emoji: "💬", title: t.step1.title, sub: t.step1.sub,
       content: (() => {
-        const phoneErr = contactType === "phone" && contact.trim().length > 0 && !isValidPhone(contact);
-        const contactOk = contact.trim().length >= 2 && !phoneErr;
+        const phoneErr = contactType === "phone" && phone.trim().length > 0 && !isValidPhone(phone);
+        const contactOk = contactType === "telegram" ? hasTgUsername : (phone.trim().length >= 2 && !phoneErr);
         return (
           <>
-            <div className="tog-g" style={{ marginBottom: hasTgUsername ? 14 : 0 }}>
+            <div className="tog-g" style={{ marginBottom: 14 }}>
               <button
                 className={`tog${contactType === "telegram" ? " on" : ""}`}
                 disabled={!hasTgUsername}
                 style={!hasTgUsername ? { opacity: 0.35, cursor: "not-allowed" } : {}}
-                onClick={() => { if (hasTgUsername) { setContactType("telegram"); setContact(`@${tgUsername}`); } }}
+                onClick={() => hasTgUsername && setContactType("telegram")}
               >
                 Telegram
               </button>
-              <button className={`tog${contactType === "phone" ? " on" : ""}`} onClick={() => { setContactType("phone"); setContact(""); }}>Телефон</button>
+              <button className={`tog${contactType === "phone" ? " on" : ""}`} onClick={() => setContactType("phone")}>Телефон</button>
             </div>
-            {!hasTgUsername && (
-              <div className="ob-field-hint" style={{ marginBottom: 10, marginTop: 8 }}>
-                У вас нет @username в Telegram — доступен только телефон. Вы сможете добавить Telegram позже в настройках.
+
+            {contactType === "telegram" && (
+              <div style={{ fontSize: 15, color: "rgba(255,255,255,.8)", marginBottom: 12, textAlign: "center" }}>
+                {`@${tgUsername}`}
               </div>
             )}
-            <input
-              className={`ob-field${contactOk ? " ok" : phoneErr ? " err" : ""}`}
-              placeholder={contactType === "telegram" ? "@username" : "+7 (___) ___-__-__"}
-              value={contact}
-              onChange={(e) => setContact(e.target.value)}
-              autoFocus
-              maxLength={60}
-            />
-            {phoneErr && (
-              <div className="ob-field-hint" style={{ color: "#ff8090" }}>
-                Неверный формат. Пример: +7 (999) 123-45-67
+
+            {contactType === "phone" && (
+              <>
+                <input
+                  className={`ob-field${phone.trim().length >= 2 && !phoneErr ? " ok" : phoneErr ? " err" : ""}`}
+                  placeholder="+7 (___) ___-__-__"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  autoFocus
+                  maxLength={20}
+                />
+                {phoneErr && (
+                  <div className="ob-field-hint" style={{ color: "#ff8090" }}>
+                    Неверный формат. Пример: +7 (999) 123-45-67
+                  </div>
+                )}
+              </>
+            )}
+
+            {!hasTgUsername && contactType === "telegram" && (
+              <div className="ob-field-hint">
+                У вас нет @username в Telegram. Добавьте его в настройках Telegram или выберите телефон.
               </div>
             )}
             <div className="ob-field-hint">

@@ -21,14 +21,11 @@ export function Settings() {
   const alreadyHasTgContact = (me.contactType || "telegram") === "telegram" && !!me.contact;
   const canUseTelegram = hasTgUsername || alreadyHasTgContact;
 
-  const [contact, setContact] = useState(() => {
-    if (me.contact) return me.contact;
-    if (hasTgUsername) return `@${tgUsername}`;
-    return "";
-  });
+  const [phone, setPhone] = useState(
+    (me.contactType === "phone" ? me.contact : "") || ""
+  );
   const [contactType, setContactType] = useState(() => {
     const saved = me.contactType || "telegram";
-    // If they have telegram saved keep it; if no username default to phone
     if (saved === "telegram" && !canUseTelegram) return "phone";
     return saved;
   });
@@ -40,23 +37,22 @@ export function Settings() {
   const [newName, setNewName] = useState("");
   const [nameBusy, setNameBusy] = useState(false);
 
-  function switchContactType(type) {
-    setContactType(type);
-    if (type === "telegram") {
-      // Auto-fill with @username if not already set
-      if (!contact && hasTgUsername) setContact(`@${tgUsername}`);
-    }
-  }
+  // Telegram contact is always derived from the TG username (no manual input)
+  const tgContact = hasTgUsername ? `@${tgUsername}` : (me.contactType === "telegram" ? me.contact : "");
 
-  const phoneError = contactType === "phone" && contact.trim().length > 0 && !isValidPhone(contact);
-  const contactOk = contact.trim().length >= 2 && !phoneError;
+  const phoneError = contactType === "phone" && phone.trim().length > 0 && !isValidPhone(phone);
+  const contactOk = contactType === "telegram"
+    ? !!tgContact
+    : phone.trim().length >= 2 && !phoneError;
+
+  const contactValue = contactType === "telegram" ? tgContact : phone;
 
   async function save() {
     if (busy || !contactOk) return;
     setBusy(true);
     try {
       await api.patch("/me", {
-        contact: contact.trim(),
+        contact: contactValue.trim(),
         contactType,
         lang,
         prefDisc: disc,
@@ -132,38 +128,48 @@ export function Settings() {
           <div className="s-lbl">📩 Способ связи <span style={{ color: "#FF453A", fontSize: 11 }}>обязательно</span></div>
           <div className="tog-g" style={{ width: "100%" }}>
             <button
-              className={`tog${contactType === "telegram" ? " on" : ""}${!canUseTelegram ? " disabled" : ""}`}
-              onClick={() => canUseTelegram && switchContactType("telegram")}
-              disabled={!canUseTelegram}
-              title={!canUseTelegram ? "У вас нет @username в Telegram" : undefined}
+              className={`tog${contactType === "telegram" ? " on" : ""}`}
+              onClick={() => setContactType("telegram")}
               style={!canUseTelegram ? { opacity: 0.38, cursor: "not-allowed" } : {}}
+              disabled={!canUseTelegram}
             >
               Telegram
             </button>
-            <button className={`tog${contactType === "phone" ? " on" : ""}`} onClick={() => switchContactType("phone")}>Телефон</button>
+            <button className={`tog${contactType === "phone" ? " on" : ""}`} onClick={() => setContactType("phone")}>Телефон</button>
           </div>
-          {!canUseTelegram && (
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,.4)", padding: "0 2px" }}>
-              Telegram недоступен — у вас нет @username. Установите его в настройках Telegram.
+
+          {contactType === "telegram" && !canUseTelegram && (
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,.45)", padding: "2px 2px 0" }}>
+              У вас нет @username в Telegram — добавьте его в настройках Telegram, затем вернитесь сюда.
             </div>
           )}
-          <input
-            className="s-inp"
-            value={contact}
-            maxLength={120}
-            placeholder={contactType === "telegram" ? "@username" : "+7 (___) ___-__-__"}
-            onChange={(e) => setContact(e.target.value)}
-            style={phoneError ? { boxShadow: "0 0 0 2px #FF453A" } : {}}
-          />
-          {phoneError && (
-            <div style={{ fontSize: 12, color: "#FF453A", padding: "0 4px" }}>
-              Неверный формат. Пример: +7 (999) 123-45-67
+          {contactType === "telegram" && canUseTelegram && (
+            <div style={{ fontSize: 14, color: "rgba(255,255,255,.7)", padding: "4px 2px 0" }}>
+              {tgContact}
             </div>
+          )}
+
+          {contactType === "phone" && (
+            <>
+              <input
+                className="s-inp"
+                value={phone}
+                maxLength={20}
+                placeholder="+7 (___) ___-__-__"
+                onChange={(e) => setPhone(e.target.value)}
+                style={phoneError ? { boxShadow: "0 0 0 2px #FF453A" } : {}}
+              />
+              {phoneError && (
+                <div style={{ fontSize: 12, color: "#FF453A", padding: "0 4px" }}>
+                  Неверный формат. Пример: +7 (999) 123-45-67
+                </div>
+              )}
+            </>
           )}
         </div>
         <div className="s-hint">
           {contactType === "telegram"
-            ? "Будет прямая ссылка на ваш Telegram."
+            ? "Прямая ссылка на ваш Telegram — видна активированным игрокам."
             : "Номер телефона — видно только активированным игрокам."}
         </div>
       </div>
