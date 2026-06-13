@@ -26,7 +26,9 @@ function NavRow({ icon, iconBg, label, value, onClick, locked, badge }) {
 function SearchBlock() {
   const { me, t, refreshMe, toastError } = useApp();
   const [open, setOpen] = useState(false);
-  const [disc, setDisc] = useState(me.searching?.disc ?? me.prefDisc);
+  const isPool = me.activeDiscipline !== 'pyramid';
+  // В пуле дисциплина фиксирована (всегда American=1), в пирамиде — выбор как раньше
+  const [disc, setDisc] = useState(isPool ? 1 : (me.searching?.disc ?? me.prefDisc));
   const [pays, setPays] = useState(me.searching?.pays ?? me.prefPays);
   const [busy, setBusy] = useState(false);
   const now = useNow(1000);
@@ -72,7 +74,7 @@ function SearchBlock() {
           <>
             <span>{t.search.btn}</span>
             <span style={{ fontSize: 13, color: "rgba(255,255,255,.35)", marginLeft: 2 }}>
-              {t.discOpts[disc]} · {t.paysOpts[pays]}
+              {!isPool && `${t.discOpts[disc]} · `}{t.paysOpts[pays]}
             </span>
           </>
         )}
@@ -80,14 +82,16 @@ function SearchBlock() {
       </button>
       {open && (
         <div className="search-expand">
-          <div className="search-expand-row">
-            <span className="search-expand-lbl">{t.search.discipline}</span>
-            <div className="search-tog-g">
-              {t.discOpts.map((d, i) => (
-                <button key={i} className={`search-tog${disc === i ? " on" : ""}`} onClick={() => setDisc(i)}>{d}</button>
-              ))}
+          {!isPool && (
+            <div className="search-expand-row">
+              <span className="search-expand-lbl">{t.search.discipline}</span>
+              <div className="search-tog-g">
+                {t.discOpts.map((d, i) => (
+                  <button key={i} className={`search-tog${disc === i ? " on" : ""}`} onClick={() => setDisc(i)}>{d}</button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
           <div className="search-expand-row">
             <span className="search-expand-lbl">{t.search.whoPays}</span>
             <div className="search-tog-g">

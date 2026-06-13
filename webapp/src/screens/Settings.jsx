@@ -178,14 +178,16 @@ export function Settings() {
 
       <div className="card">
         <div className="s-sect">{t.settings.searchDefaults}</div>
-        <div className="tog-wrap">
-          <div className="tog-lbl">{t.search.discipline}</div>
-          <div className="tog-g">
-            {t.discOpts.map((d, i) => (
-              <button key={i} className={`tog${disc === i ? " on" : ""}`} onClick={() => setDisc(i)}>{d}</button>
-            ))}
+        {activeDiscipline !== 'pool' && (
+          <div className="tog-wrap">
+            <div className="tog-lbl">{t.search.discipline}</div>
+            <div className="tog-g">
+              {t.discOpts.map((d, i) => (
+                <button key={i} className={`tog${disc === i ? " on" : ""}`} onClick={() => setDisc(i)}>{d}</button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
         <div className="tog-wrap">
           <div className="tog-lbl">{t.search.whoPays}</div>
           <div className="tog-g">

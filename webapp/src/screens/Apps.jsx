@@ -9,7 +9,9 @@ function NewRequestForm({ onDone, onCancel }) {
   const { me, t, toastError } = useApp();
   const [dayOffset, setDayOffset] = useState(1);
   const [timeSlot, setTimeSlot] = useState(0);
-  const [disc, setDisc] = useState(me.prefDisc === 2 ? 0 : me.prefDisc);
+  const isPool = me.activeDiscipline !== 'pyramid';
+  // В пуле дисциплина фиксирована (American=0), в пирамиде — выбор как раньше
+  const [disc, setDisc] = useState(isPool ? 0 : (me.prefDisc === 2 ? 1 : me.prefDisc));
   const [pays, setPays] = useState(me.prefPays);
   const [busy, setBusy] = useState(false);
 
@@ -48,14 +50,16 @@ function NewRequestForm({ onDone, onCancel }) {
           ))}
         </div>
       </div>
-      <div className="tog-wrap">
-        <div className="tog-lbl">{t.apps.disc}</div>
-        <div className="tog-g">
-          {t.reqDiscOpts.map((d, i) => (
-            <button key={i} className={`tog${disc === i ? " on" : ""}`} onClick={() => setDisc(i)}>{d}</button>
-          ))}
+      {!isPool && (
+        <div className="tog-wrap">
+          <div className="tog-lbl">{t.apps.disc}</div>
+          <div className="tog-g">
+            {t.reqDiscOpts.map((d, i) => (
+              <button key={i} className={`tog${disc === i ? " on" : ""}`} onClick={() => setDisc(i)}>{d}</button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
       <div className="tog-wrap">
         <div className="tog-lbl">{t.apps.pays}</div>
         <div className="tog-g">
