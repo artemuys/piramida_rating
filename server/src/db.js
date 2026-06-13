@@ -149,6 +149,7 @@ for (const col of [
   `ALTER TABLE users ADD COLUMN is_super INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE users ADD COLUMN banned INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE users ADD COLUMN contact_type TEXT NOT NULL DEFAULT 'telegram'`,
+  `ALTER TABLE users ADD COLUMN name_change_allowed INTEGER NOT NULL DEFAULT 0`,
 ]) {
   try { db.exec(col); } catch { /* колонка уже есть */ }
 }

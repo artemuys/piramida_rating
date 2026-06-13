@@ -1,4 +1,4 @@
-import { q, tx } from "../db.js";
+import { q, tx, db } from "../db.js";
 import { config } from "../config.js";
 import { ApiError, requireAdmin, requireSuperAdmin } from "../errors.js";
 import { now, clean } from "../util.js";
@@ -366,6 +366,171 @@ export default async function adminRoutes(app) {
     const target = getTarget(req);
     q(`UPDATE users SET elo = ?, peak_elo = MAX(peak_elo, ?) WHERE id = ?`).run(req.body.elo, req.body.elo, target.id);
     audit(req.user.id, target.id, `set_elo:${req.body.elo}`);
+    return { ok: true };
+  });
+
+  // ── Суперадмин: выдать одноразовое изменение имени ───────
+  app.post("/admin/users/:id/grant-name-change", (req) => {
+    requireSuperAdmin(req);
+    const target = getTarget(req);
+    q(`UPDATE users SET name_change_allowed = 1 WHERE id = ?`).run(target.id);
+    audit(req.user.id, target.id, "grant_name_change");
+    return { ok: true };
+  });
+
+  // ── Суперадмин: принудительно сменить имя ────────────────
+  const setNameSchema = {
+    body: {
+      type: "object",
+      required: ["name"],
+      additionalProperties: false,
+      properties: { name: { type: "string", minLength: 2, maxLength: 40 } },
+    },
+  };
+
+  app.post("/admin/users/:id/set-name", { schema: setNameSchema }, (req) => {
+    requireSuperAdmin(req);
+    const target = getTarget(req);
+    const name = clean(req.body.name, 40);
+    if (name.length < 2) throw new ApiError(400, "validation");
+    q(`UPDATE users SET name = ?, name_change_allowed = 0 WHERE id = ?`).run(name, target.id);
+    audit(req.user.id, target.id, `set_name:${name}`);
+    return { ok: true };
+  });
+
+  // ── Суперадмин: сменить ID игрока ────────────────────────
+  const changeIdSchema = {
+    body: {
+      type: "object",
+      required: ["newId"],
+      additionalProperties: false,
+      properties: { newId: { type: "integer", minimum: 1 } },
+    },
+  };
+
+  app.post("/admin/users/:id/change-id", { schema: changeIdSchema }, (req) => {
+    requireSuperAdmin(req);
+    const target = getTarget(req);
+    const newId = Number(req.body.newId);
+    if (newId === target.id) throw new ApiError(400, "same_id");
+    const exists = q(`SELECT 1 FROM users WHERE id = ?`).get(newId);
+    if (exists) throw new ApiError(400, "id_taken");
+
+    db.exec("PRAGMA foreign_keys = OFF");
+    try {
+      db.exec("BEGIN IMMEDIATE");
+      try {
+        db.prepare(`UPDATE users SET id = ? WHERE id = ?`).run(newId, target.id);
+        for (const [tbl, col] of [
+          ["matches", "initiator_id"], ["matches", "opponent_id"], ["matches", "winner_id"],
+          ["favorites", "user_id"], ["favorites", "fav_id"],
+          ["duels", "challenger_id"], ["duels", "opponent_id"],
+          ["achievements", "user_id"],
+          ["feed", "actor_id"], ["feed", "target_id"],
+          ["requests", "user_id"],
+          ["audit_log", "admin_id"], ["audit_log", "target_id"],
+        ]) {
+          db.prepare(`UPDATE ${tbl} SET ${col} = ? WHERE ${col} = ?`).run(newId, target.id);
+        }
+        db.exec("COMMIT");
+      } catch (e) {
+        db.exec("ROLLBACK");
+        throw e;
+      }
+    } finally {
+      db.exec("PRAGMA foreign_keys = ON");
+    }
+    audit(req.user.id, newId, `change_id:${target.id}->${newId}`);
+    return { ok: true };
+  });
+
+  // ── Суперадмин: сброс статистики игрока ──────────────────
+  app.post("/admin/users/:id/reset-stats", (req) => {
+    requireSuperAdmin(req);
+    const target = getTarget(req);
+    const ELO_START = 1000;
+    q(`UPDATE users SET elo = ?, peak_elo = ?, matches_count = 0, wins_count = 0, streak = 0, best_streak = 0, xp = 0 WHERE id = ?`)
+      .run(ELO_START, ELO_START, target.id);
+    audit(req.user.id, target.id, "reset_stats");
+    return { ok: true };
+  });
+
+  // ── Суперадмин: удалить игрока ────────────────────────────
+  app.delete("/admin/users/:id", (req) => {
+    requireSuperAdmin(req);
+    const target = getTarget(req);
+    if (target.id === req.user.id) throw new ApiError(400, "self_action");
+    if (target.is_super) throw new ApiError(400, "cannot_delete_super");
+    tx(() => {
+      q(`DELETE FROM requests WHERE user_id = ?`).run(target.id);
+      q(`DELETE FROM favorites WHERE user_id = ? OR fav_id = ?`).run(target.id, target.id);
+      q(`DELETE FROM duels WHERE challenger_id = ? OR opponent_id = ?`).run(target.id, target.id);
+      q(`DELETE FROM achievements WHERE user_id = ?`).run(target.id);
+      q(`UPDATE matches SET status = 'cancelled' WHERE status = 'pending' AND (initiator_id = ? OR opponent_id = ?)`).run(target.id, target.id);
+      q(`DELETE FROM users WHERE id = ?`).run(target.id);
+      audit(req.user.id, null, `delete_user:${target.id}:${target.name}`);
+    });
+    return { ok: true };
+  });
+
+  // ── Суперадмин: конфликтные матчи ────────────────────────
+  app.get("/admin/conflicts", (req) => {
+    requireSuperAdmin(req);
+    const rows = q(
+      `SELECT m.*, i.name AS i_name, o.name AS o_name
+       FROM matches m
+       JOIN users i ON i.id = m.initiator_id
+       JOIN users o ON o.id = m.opponent_id
+       WHERE m.status = 'conflict'
+       ORDER BY m.created_at DESC LIMIT 50`
+    ).all();
+    return {
+      conflicts: rows.map(m => ({
+        id: m.id,
+        initiatorId: m.initiator_id, initiatorName: m.i_name, initiatorClaim: m.initiator_claim,
+        opponentId: m.opponent_id, opponentName: m.o_name, opponentClaim: m.opponent_claim,
+        createdAt: m.created_at,
+      })),
+    };
+  });
+
+  const resolveConflictSchema = {
+    body: {
+      type: "object",
+      required: ["winnerId"],
+      additionalProperties: false,
+      properties: { winnerId: { type: "integer" } },
+    },
+  };
+
+  app.post("/admin/conflicts/:id/resolve", { schema: resolveConflictSchema }, (req) => {
+    requireSuperAdmin(req);
+    const matchId = Number(req.params.id) || 0;
+    const match = q(`SELECT * FROM matches WHERE id = ? AND status = 'conflict'`).get(matchId);
+    if (!match) throw new ApiError(404, "not_found");
+    const { winnerId } = req.body;
+    if (winnerId !== match.initiator_id && winnerId !== match.opponent_id) throw new ApiError(400, "validation");
+
+    const loserId = winnerId === match.initiator_id ? match.opponent_id : match.initiator_id;
+    const K = 32;
+    const winner = q(`SELECT elo FROM users WHERE id = ?`).get(winnerId);
+    const loser = q(`SELECT elo FROM users WHERE id = ?`).get(loserId);
+    const expected = 1 / (1 + Math.pow(10, (loser.elo - winner.elo) / 400));
+    const delta = Math.round(K * (1 - expected));
+
+    tx(() => {
+      q(`UPDATE matches SET status = 'confirmed', winner_id = ?, delta = ?,
+         initiator_elo_after = ?, opponent_elo_after = ?, resolved_at = ?
+         WHERE id = ?`).run(
+        winnerId, delta,
+        match.initiator_id === winnerId ? winner.elo + delta : loser.elo - delta,
+        match.opponent_id === winnerId ? winner.elo + delta : loser.elo - delta,
+        now(), matchId
+      );
+      q(`UPDATE users SET elo = elo + ?, wins_count = wins_count + 1 WHERE id = ?`).run(delta, winnerId);
+      q(`UPDATE users SET elo = elo - ? WHERE id = ?`).run(delta, loserId);
+      audit(req.user.id, null, `resolve_conflict:${matchId}:winner=${winnerId}`);
+    });
     return { ok: true };
   });
 }

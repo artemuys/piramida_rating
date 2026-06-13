@@ -45,6 +45,7 @@ function serializeMe(u) {
     streak: u.streak ?? 0,
     bestStreak: u.best_streak ?? 0,
     peakElo: u.peak_elo ?? u.elo,
+    nameChangeAllowed: !!u.name_change_allowed,
     unseenAchievements: unseenAch,
     pendingDuels,
     achPoints,
@@ -81,6 +82,7 @@ const patchMeSchema = {
     type: "object",
     additionalProperties: false,
     properties: {
+      name: { type: "string", minLength: 2, maxLength: 40 },
       contact: { type: "string", maxLength: 120 },
       contactType: { type: "string", enum: ["telegram", "phone"] },
       lang: { type: "string", enum: ["en", "pl", "uk", "ru"] },
@@ -123,6 +125,14 @@ export default async function usersRoutes(app) {
     const u = requireUser(req);
     const contact = req.body.contact !== undefined ? clean(req.body.contact, 60) : u.contact;
     const contactType = req.body.contactType ?? u.contact_type ?? "telegram";
+
+    if (req.body.name !== undefined) {
+      if (!u.name_change_allowed) throw new ApiError(403, "not_allowed");
+      const newName = clean(req.body.name, 40);
+      if (newName.length < 2 || !/^[\p{L}\-]{2,}$/u.test(newName)) throw new ApiError(400, "invalid_name");
+      q(`UPDATE users SET name = ?, name_change_allowed = 0 WHERE id = ?`).run(newName, u.id);
+    }
+
     q(`UPDATE users SET contact = ?, contact_type = ?, lang = ?, pref_disc = ?, pref_pays = ? WHERE id = ?`).run(
       contact,
       contactType,

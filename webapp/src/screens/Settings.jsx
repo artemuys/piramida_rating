@@ -2,20 +2,48 @@ import { useState } from "react";
 import { api } from "../api.js";
 import { useApp } from "../store.jsx";
 import { LANGS } from "../i18n.js";
-import { haptic } from "../telegram.js";
+import { haptic, tg } from "../telegram.js";
+
+function getTgUsername() {
+  try { return tg?.initDataUnsafe?.user?.username || ""; } catch { return ""; }
+}
+
+function isValidPhone(val) {
+  return /^\+?[\d\s\-\(\)]{7,20}$/.test(val.trim()) && (val.match(/\d/g) || []).length >= 7;
+}
 
 export function Settings() {
-  const { me, t, refreshMe, toastError } = useApp();
-  const [contact, setContact] = useState(me.contact || "");
+  const { me, t, refreshMe, toastError, toast } = useApp();
+  const [contact, setContact] = useState(() => {
+    if (me.contact) return me.contact;
+    if ((me.contactType || "telegram") === "telegram") {
+      const u = getTgUsername();
+      return u ? `@${u}` : "";
+    }
+    return "";
+  });
   const [contactType, setContactType] = useState(me.contactType || "telegram");
   const [disc, setDisc] = useState(me.prefDisc);
   const [pays, setPays] = useState(me.prefPays);
   const [lang, setLang] = useState(me.lang);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [nameBusy, setNameBusy] = useState(false);
+
+  function switchContactType(type) {
+    setContactType(type);
+    if (type === "telegram" && !contact) {
+      const u = getTgUsername();
+      if (u) setContact(`@${u}`);
+    }
+  }
+
+  const phoneError = contactType === "phone" && contact.trim().length > 0 && !isValidPhone(contact);
+  const contactOk = contact.trim().length >= 2 && !phoneError;
 
   async function save() {
-    if (busy) return;
+    if (busy || !contactOk) return;
     setBusy(true);
     try {
       await api.patch("/me", {
@@ -37,6 +65,23 @@ export function Settings() {
     }
   }
 
+  async function saveName() {
+    const n = newName.trim();
+    if (!n || nameBusy) return;
+    setNameBusy(true);
+    try {
+      await api.patch("/me", { name: n });
+      await refreshMe();
+      haptic("ok");
+      toast("✓ Имя изменено", "ok");
+      setNewName("");
+    } catch (e) {
+      toastError(e);
+    } finally {
+      setNameBusy(false);
+    }
+  }
+
   return (
     <>
       <div className="card">
@@ -45,12 +90,40 @@ export function Settings() {
           <div className="s-lbl">👤 Имя</div>
           <span style={{ fontSize: 15, color: "rgba(255,255,255,.6)" }}>{me.name}</span>
         </div>
-        <div className="s-hint" style={{ paddingTop: 0 }}>Имя задаётся при регистрации и не меняется.</div>
+
+        {me.nameChangeAllowed ? (
+          <>
+            <div className="s-hint" style={{ paddingTop: 0, color: "#FF9F0A" }}>
+              У вас есть одна возможность сменить имя.
+            </div>
+            <div style={{ padding: "0 16px 12px", display: "flex", gap: 8 }}>
+              <input
+                className="s-inp"
+                style={{ flex: 1 }}
+                placeholder="Новое имя"
+                value={newName}
+                maxLength={40}
+                onChange={e => setNewName(e.target.value)}
+              />
+              <button
+                className="btn-tonal blue"
+                style={{ padding: "8px 14px", width: "auto" }}
+                disabled={nameBusy || newName.trim().length < 2}
+                onClick={saveName}
+              >
+                Сохранить
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="s-hint" style={{ paddingTop: 0 }}>Имя задаётся при регистрации и не меняется.</div>
+        )}
+
         <div className="s-row" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
           <div className="s-lbl">📩 Способ связи <span style={{ color: "#FF453A", fontSize: 11 }}>обязательно</span></div>
           <div className="tog-g" style={{ width: "100%" }}>
-            <button className={`tog${contactType === "telegram" ? " on" : ""}`} onClick={() => setContactType("telegram")}>Telegram</button>
-            <button className={`tog${contactType === "phone" ? " on" : ""}`} onClick={() => setContactType("phone")}>Телефон</button>
+            <button className={`tog${contactType === "telegram" ? " on" : ""}`} onClick={() => switchContactType("telegram")}>Telegram</button>
+            <button className={`tog${contactType === "phone" ? " on" : ""}`} onClick={() => switchContactType("phone")}>Телефон</button>
           </div>
           <input
             className="s-inp"
@@ -58,7 +131,13 @@ export function Settings() {
             maxLength={120}
             placeholder={contactType === "telegram" ? "@username" : "+7 (___) ___-__-__"}
             onChange={(e) => setContact(e.target.value)}
+            style={phoneError ? { boxShadow: "0 0 0 2px #FF453A" } : {}}
           />
+          {phoneError && (
+            <div style={{ fontSize: 12, color: "#FF453A", padding: "0 4px" }}>
+              Неверный формат. Пример: +7 (999) 123-45-67
+            </div>
+          )}
         </div>
         <div className="s-hint">
           {contactType === "telegram"
@@ -112,7 +191,7 @@ export function Settings() {
       <button
         className="btn-primary"
         style={saved ? { background: "#30D158", color: "#000" } : {}}
-        disabled={busy || contact.trim().length < 2}
+        disabled={busy || !contactOk}
         onClick={save}
       >
         {saved ? "✓" : t.settings.save}

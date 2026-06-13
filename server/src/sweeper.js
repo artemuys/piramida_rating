@@ -38,13 +38,13 @@ export function startSweeper(log) {
 }
 
 function checkSeasonRollover(t) {
-  const cur = q(`SELECT * FROM seasons ORDER BY id DESC LIMIT 1`).get();
+  const cur = q(`SELECT * FROM seasons WHERE closed = 0 OR closed IS NULL ORDER BY id DESC LIMIT 1`).get();
+  // Сезон управляется вручную суперадмином — автоматически новый не открываем
   if (!cur || cur.ends_at > t) return;
 
-  // Сезон закончился — decay ELO на 20% к базе 1000 и стартуем новый
-  tx(() => {
-    q(`UPDATE users SET elo = CAST(elo * 0.8 + 1000 * 0.2 AS INTEGER)`).run();
-    q(`INSERT INTO seasons (started_at, ends_at) VALUES (?, ?)`).run(t, t + config.SEASON_MS);
-    addFeedEvent("season_end", null, null, { seasonId: cur.id });
-  });
+  // Сезон закончился — только публикуем событие (суперадмин закроет вручную)
+  const alreadyPosted = q(`SELECT 1 FROM feed WHERE type = 'season_expired' AND data LIKE ?`).get(`%"seasonId":${cur.id}%`);
+  if (!alreadyPosted) {
+    addFeedEvent("season_expired", null, null, { seasonId: cur.id });
+  }
 }

@@ -2,6 +2,16 @@ import { q } from "../db.js";
 import { requireUser } from "../errors.js";
 import { now } from "../util.js";
 
+function enrichAch(r) {
+  const entry = { code: r.code, earnedAt: r.earned_at, seen: r.seen };
+  const m = r.code.match(/^season_master_(\d+)$/);
+  if (m) {
+    const season = q(`SELECT started_at, ends_at FROM seasons WHERE id = ?`).get(Number(m[1]));
+    if (season) { entry.seasonStartedAt = season.started_at; entry.seasonEndsAt = season.ends_at; }
+  }
+  return entry;
+}
+
 export default async function recordsRoutes(app) {
   // GET /achievements/me — мои ачивки
   app.get("/achievements/me", (req) => {
@@ -9,7 +19,7 @@ export default async function recordsRoutes(app) {
     const rows = q(`SELECT code, earned_at, seen FROM achievements WHERE user_id = ? ORDER BY earned_at DESC`).all(u.id);
     // Помечаем все просмотренными
     q(`UPDATE achievements SET seen = 1 WHERE user_id = ? AND seen = 0`).run(u.id);
-    return { achievements: rows.map(r => ({ code: r.code, earnedAt: r.earned_at, seen: r.seen })) };
+    return { achievements: rows.map(r => enrichAch(r)) };
   });
 
   // GET /achievements/:id — ачивки другого игрока
@@ -17,7 +27,7 @@ export default async function recordsRoutes(app) {
     requireUser(req);
     const id = Number(req.params.id) || 0;
     const rows = q(`SELECT code, earned_at FROM achievements WHERE user_id = ? ORDER BY earned_at DESC`).all(id);
-    return { achievements: rows.map(r => ({ code: r.code, earnedAt: r.earned_at })) };
+    return { achievements: rows.map(r => enrichAch(r)) };
   });
 
   // GET /records — клубные рекорды

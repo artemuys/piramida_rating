@@ -6,11 +6,12 @@ import { haptic, tgConfirm } from "../telegram.js";
 import { fmtAgo } from "../util.js";
 
 const TABS = [
-  { id: "users",   label: "👥 Игроки" },
-  { id: "announce", label: "📢 Объявления" },
-  { id: "seasons",  label: "🏆 Сезоны" },
-  { id: "audit",    label: "📋 Аудит" },
-  { id: "stats",    label: "📊 Статистика" },
+  { id: "users",     label: "👥 Игроки" },
+  { id: "announce",  label: "📢 Объявления" },
+  { id: "seasons",   label: "🏆 Сезоны" },
+  { id: "conflicts", label: "⚔️ Конфликты" },
+  { id: "audit",     label: "📋 Аудит" },
+  { id: "stats",     label: "📊 Статистика" },
 ];
 
 export function SuperAdmin({ navigate }) {
@@ -35,11 +36,12 @@ export function SuperAdmin({ navigate }) {
         <div style={{ height: 12 }} />
       </div>
 
-      {tab === "users"    && <UsersTab navigate={navigate} toast={toast} toastError={toastError} />}
-      {tab === "announce" && <AnnounceTab toast={toast} toastError={toastError} />}
-      {tab === "seasons"  && <SeasonsTab toast={toast} toastError={toastError} />}
-      {tab === "audit"    && <AuditTab toastError={toastError} />}
-      {tab === "stats"    && <StatsTab toastError={toastError} />}
+      {tab === "users"     && <UsersTab navigate={navigate} toast={toast} toastError={toastError} />}
+      {tab === "announce"  && <AnnounceTab toast={toast} toastError={toastError} />}
+      {tab === "seasons"   && <SeasonsTab toast={toast} toastError={toastError} />}
+      {tab === "conflicts" && <ConflictsTab toast={toast} toastError={toastError} />}
+      {tab === "audit"     && <AuditTab toastError={toastError} />}
+      {tab === "stats"     && <StatsTab toastError={toastError} />}
     </>
   );
 }
@@ -49,6 +51,9 @@ function UsersTab({ navigate, toast, toastError }) {
   const [query, setQuery] = useState("");
   const [users, setUsers] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [selected, setSelected] = useState(null); // expanded player panel
+  const [newId, setNewId] = useState("");
+  const [forceName, setForceName] = useState("");
   const debounceRef = useRef(null);
 
   const loadUsers = useCallback((q) => {
@@ -65,69 +70,152 @@ function UsersTab({ navigate, toast, toastError }) {
     return () => clearTimeout(debounceRef.current);
   }, [query, loadUsers]);
 
-  async function act(url, confirmMsg, okMsg) {
+  async function act(url, confirmMsg, okMsg, method = "post") {
     if (busy) return;
     if (confirmMsg && !(await tgConfirm(confirmMsg))) return;
     setBusy(true);
     try {
-      await api.post(url);
+      await (method === "delete" ? api.del(url) : api.post(url));
       haptic("ok");
       toast(okMsg || "✓", "ok");
+      setSelected(null);
       loadUsers(query.trim());
     } catch (e) { toastError(e); }
     finally { setBusy(false); }
   }
 
+  async function actBody(url, body, confirmMsg, okMsg) {
+    if (busy) return;
+    if (confirmMsg && !(await tgConfirm(confirmMsg))) return;
+    setBusy(true);
+    try {
+      await api.post(url, body);
+      haptic("ok");
+      toast(okMsg || "✓", "ok");
+      setSelected(null);
+      loadUsers(query.trim());
+    } catch (e) { toastError(e); }
+    finally { setBusy(false); }
+  }
+
+  const u = selected ? users?.find(x => x.id === selected) : null;
+
   return (
-    <div className="card">
-      <div className="inp-wrap" style={{ paddingTop: 14 }}>
-        <input
-          className="inp"
-          placeholder="ID или имя игрока"
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-        />
-      </div>
-      {users === null && <Spinner />}
-      {users !== null && users.map(u => (
-        <div key={u.id} className="sadm-row">
-          <div className="sadm-info" onClick={() => navigate("admin-player", { playerId: u.id })} style={{ cursor: "pointer", flex: 1, display: "flex", alignItems: "center", gap: 10, padding: "10px 0 10px 20px" }}>
-            <Ava id={u.id} name={u.name} />
-            <div>
-              <div style={{ fontWeight: 500 }}>{u.name}<Crown role={u.role} /></div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,.4)" }}>
-                {u.id} · {u.elo} эло
-                {u.banned && <span style={{ color: "#FF453A", marginLeft: 6 }}>🚫 забанен</span>}
-                {u.isSuper && <span style={{ color: "#FFD60A", marginLeft: 6 }}>★ супер</span>}
+    <>
+      <div className="card">
+        <div className="inp-wrap" style={{ paddingTop: 14 }}>
+          <input
+            className="inp"
+            placeholder="ID или имя игрока"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+          />
+        </div>
+        {users === null && <Spinner />}
+        {users !== null && users.map(u => (
+          <div key={u.id} className="sadm-row" style={{ flexDirection: "column", padding: 0 }}>
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <div className="sadm-info" onClick={() => navigate("admin-player", { playerId: u.id })} style={{ cursor: "pointer", flex: 1, display: "flex", alignItems: "center", gap: 10, padding: "10px 0 10px 20px" }}>
+                <Ava id={u.id} name={u.name} />
+                <div>
+                  <div style={{ fontWeight: 500 }}>{u.name}<Crown role={u.role} /></div>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,.4)" }}>
+                    #{u.id} · {u.elo} эло
+                    {u.banned && <span style={{ color: "#FF453A", marginLeft: 6 }}>🚫 забанен</span>}
+                    {u.isSuper && <span style={{ color: "#FFD60A", marginLeft: 6 }}>★ супер</span>}
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 6, padding: "0 16px", flexShrink: 0 }}>
+                {!u.banned
+                  ? <button className="btn-tonal red" style={{ padding: "6px 10px", fontSize: 12, width: "auto" }} disabled={busy}
+                      onClick={() => act(`/admin/users/${u.id}/ban`, `Забанить ${u.name}?`, "Забанен")}>
+                      Бан
+                    </button>
+                  : <button className="btn-tonal green" style={{ padding: "6px 10px", fontSize: 12, width: "auto" }} disabled={busy}
+                      onClick={() => act(`/admin/users/${u.id}/unban`, null, "Разбанен")}>
+                      Разбан
+                    </button>
+                }
+                {u.role !== "admin"
+                  ? <button className="btn-tonal blue" style={{ padding: "6px 10px", fontSize: 12, width: "auto" }} disabled={busy}
+                      onClick={() => act(`/admin/users/${u.id}/promote`, `Сделать ${u.name} админом?`, "Роль выдана")}>
+                      Адм
+                    </button>
+                  : <button className="btn-tonal" style={{ padding: "6px 10px", fontSize: 12, width: "auto" }} disabled={busy}
+                      onClick={() => act(`/admin/users/${u.id}/demote`, `Снять admin с ${u.name}?`, "Роль снята")}>
+                      Снять
+                    </button>
+                }
+                <button
+                  className={`btn-tonal${selected === u.id ? " on" : ""}`}
+                  style={{ padding: "6px 10px", fontSize: 12, width: "auto" }}
+                  onClick={() => { setSelected(selected === u.id ? null : u.id); setNewId(""); setForceName(""); }}
+                >
+                  ···
+                </button>
               </div>
             </div>
+
+            {selected === u.id && (
+              <div style={{ padding: "0 16px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+                {/* Смена имени */}
+                <div>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,.45)", marginBottom: 4 }}>Принудительно сменить имя</div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input className="s-inp" style={{ flex: 1, fontSize: 13 }} placeholder="Новое имя" value={forceName} onChange={e => setForceName(e.target.value)} maxLength={40} />
+                    <button className="btn-tonal blue" style={{ padding: "7px 12px", fontSize: 12, width: "auto" }} disabled={busy || forceName.trim().length < 2}
+                      onClick={() => actBody(`/admin/users/${u.id}/set-name`, { name: forceName.trim() }, null, "Имя изменено")}>
+                      Сохранить
+                    </button>
+                  </div>
+                </div>
+
+                {/* Кнопки действий */}
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button className="btn-tonal" style={{ padding: "7px 12px", fontSize: 12, width: "auto" }} disabled={busy}
+                    onClick={() => act(`/admin/users/${u.id}/grant-name-change`, null, "Токен смены имени выдан")}>
+                    🖊 Дать смену имени
+                  </button>
+                  <button className="btn-tonal" style={{ padding: "7px 12px", fontSize: 12, width: "auto" }} disabled={busy}
+                    onClick={() => act(`/admin/users/${u.id}/reset-stats`, `Сбросить статистику ${u.name}? ELO → 1000`, "Статистика сброшена")}>
+                    🔄 Сброс стат.
+                  </button>
+                  <button className="btn-tonal red" style={{ padding: "7px 12px", fontSize: 12, width: "auto" }} disabled={busy}
+                    onClick={() => act(`/admin/users/${u.id}`, `УДАЛИТЬ аккаунт ${u.name} (#${u.id})? Это необратимо!`, "Игрок удалён", "delete")}>
+                    🗑 Удалить
+                  </button>
+                </div>
+
+                {/* Смена ID */}
+                <div>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,.45)", marginBottom: 4 }}>Сменить ID (текущий: #{u.id})</div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input
+                      className="s-inp"
+                      style={{ flex: 1, fontSize: 13 }}
+                      type="number"
+                      placeholder="Новый ID"
+                      value={newId}
+                      onChange={e => setNewId(e.target.value)}
+                    />
+                    <button
+                      className="btn-tonal"
+                      style={{ padding: "7px 12px", fontSize: 12, width: "auto" }}
+                      disabled={busy || !newId || Number(newId) === u.id}
+                      onClick={() => actBody(`/admin/users/${u.id}/change-id`, { newId: Number(newId) }, `Сменить ID ${u.name} с #${u.id} на #${newId}? Все ссылки будут обновлены.`, `ID изменён на #${newId}`)}
+                    >
+                      Применить
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-          <div style={{ display: "flex", gap: 6, padding: "0 16px", flexShrink: 0 }}>
-            {!u.banned
-              ? <button className="btn-tonal red" style={{ padding: "6px 10px", fontSize: 12, width: "auto" }} disabled={busy}
-                  onClick={() => act(`/admin/users/${u.id}/ban`, `Забанить ${u.name}?`, "Забанен")}>
-                  Бан
-                </button>
-              : <button className="btn-tonal green" style={{ padding: "6px 10px", fontSize: 12, width: "auto" }} disabled={busy}
-                  onClick={() => act(`/admin/users/${u.id}/unban`, null, "Разбанен")}>
-                  Разбан
-                </button>
-            }
-            {u.role !== "admin"
-              ? <button className="btn-tonal blue" style={{ padding: "6px 10px", fontSize: 12, width: "auto" }} disabled={busy}
-                  onClick={() => act(`/admin/users/${u.id}/promote`, `Сделать ${u.name} админом?`, "Роль выдана")}>
-                  Адм
-                </button>
-              : <button className="btn-tonal" style={{ padding: "6px 10px", fontSize: 12, width: "auto" }} disabled={busy}
-                  onClick={() => act(`/admin/users/${u.id}/demote`, `Снять admin с ${u.name}?`, "Роль снята")}>
-                  Снять
-                </button>
-            }
-          </div>
-        </div>
-      ))}
-      <div style={{ height: 8 }} />
-    </div>
+        ))}
+        <div style={{ height: 8 }} />
+      </div>
+    </>
   );
 }
 
@@ -242,7 +330,7 @@ function SeasonsTab({ toast, toastError }) {
   const [seasons, setSeasons] = useState(null);
   const [durationDays, setDurationDays] = useState(90);
   const [busy, setBusy] = useState(false);
-  const [editEndDate, setEditEndDate] = useState(""); // ISO date string for current season
+  const [editEndDate, setEditEndDate] = useState("");
 
   const load = useCallback(() => {
     api.get("/admin/seasons").then(r => setSeasons(r.seasons)).catch(toastError);
@@ -338,6 +426,9 @@ function SeasonsTab({ toast, toastError }) {
       ) : (
         <div className="card" style={{ padding: "16px 20px" }}>
           <div className="s-sect">Нет активного сезона</div>
+          <div className="hint" style={{ paddingBottom: 10 }}>
+            Новый сезон открывается только вручную. Нажмите кнопку ниже когда будете готовы.
+          </div>
           <div className="s-sect" style={{ marginTop: 4 }}>Длительность нового сезона</div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
             <input
@@ -371,6 +462,77 @@ function SeasonsTab({ toast, toastError }) {
         </div>
       )}
     </>
+  );
+}
+
+// ── Конфликты ─────────────────────────────────────────────────────────────────
+function ConflictsTab({ toast, toastError }) {
+  const [conflicts, setConflicts] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(() => {
+    api.get("/admin/conflicts").then(r => setConflicts(r.conflicts)).catch(toastError);
+  }, [toastError]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function resolve(matchId, winnerId, winnerName) {
+    if (!(await tgConfirm(`Засчитать победу ${winnerName}?`))) return;
+    setBusy(true);
+    try {
+      await api.post(`/admin/conflicts/${matchId}/resolve`, { winnerId });
+      haptic("ok");
+      toast("✓ Конфликт разрешён", "ok");
+      load();
+    } catch (e) { toastError(e); }
+    finally { setBusy(false); }
+  }
+
+  if (!conflicts) return <Spinner />;
+
+  return (
+    <div className="card">
+      <div className="s-sect">Конфликтные матчи · {conflicts.length}</div>
+      {conflicts.length === 0 && <Empty icon="⚔️" text="Нет конфликтов" />}
+      {conflicts.map(c => (
+        <div key={c.id} className="announce-row">
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+            <span style={{ fontSize: 12, color: "rgba(255,255,255,.4)" }}>Матч #{c.id} · {fmtAgo(Date.now() - c.createdAt)}</span>
+          </div>
+          <div style={{ fontSize: 14, marginBottom: 8 }}>
+            <span style={{ color: c.initiatorClaim === "win" ? "#30D158" : "#FF453A" }}>
+              {c.initiatorName}
+            </span>
+            {" "}vs{" "}
+            <span style={{ color: c.opponentClaim === "win" ? "#30D158" : "#FF453A" }}>
+              {c.opponentName}
+            </span>
+          </div>
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,.4)", marginBottom: 8 }}>
+            {c.initiatorName} заявил: {c.initiatorClaim === "win" ? "победа" : "поражение"} ·{" "}
+            {c.opponentName} заявил: {c.opponentClaim === "win" ? "победа" : "поражение"}
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              className="btn-tonal green"
+              style={{ padding: "6px 12px", fontSize: 12, width: "auto", flex: 1 }}
+              disabled={busy}
+              onClick={() => resolve(c.id, c.initiatorId, c.initiatorName)}
+            >
+              ✓ {c.initiatorName}
+            </button>
+            <button
+              className="btn-tonal green"
+              style={{ padding: "6px 12px", fontSize: 12, width: "auto", flex: 1 }}
+              disabled={busy}
+              onClick={() => resolve(c.id, c.opponentId, c.opponentName)}
+            >
+              ✓ {c.opponentName}
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 

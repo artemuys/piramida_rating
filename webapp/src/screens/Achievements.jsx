@@ -32,14 +32,22 @@ export const ACH_META = {
   phoenix:       { icon: "🦅", label: "Феникс",                  desc: "Выиграть после 4+ поражений подряд",          pts: 15 },
 };
 
-export function getAchMeta(code) {
+export function getAchMeta(code, extra = {}) {
   if (ACH_META[code]) return ACH_META[code];
-  if (/^season_master_\d+$/.test(code)) return { icon: "🏆", label: "Хозяин сезона", desc: "Топ-3 по итогам сезона", pts: 100 };
+  if (/^season_master_(\d+)$/.test(code)) {
+    const seasonId = code.match(/\d+$/)[0];
+    let desc = `Топ-3 по итогам сезона #${seasonId}`;
+    if (extra.seasonStartedAt && extra.seasonEndsAt) {
+      const fmt = (ts) => new Date(ts).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "2-digit" });
+      desc += ` · ${fmt(extra.seasonStartedAt)} — ${fmt(extra.seasonEndsAt)}`;
+    }
+    return { icon: "🏆", label: `Хозяин сезона #${seasonId}`, desc, pts: 100 };
+  }
   return { icon: "❓", label: code, desc: "", pts: 0 };
 }
 
-function AchCard({ code, earnedAt, locked }) {
-  const meta = getAchMeta(code);
+function AchCard({ code, earnedAt, locked, seasonStartedAt, seasonEndsAt }) {
+  const meta = getAchMeta(code, { seasonStartedAt, seasonEndsAt });
   return (
     <div className={`ach-card${locked ? " ach-locked" : ""}`}>
       <div className="ach-icon">{meta.icon}</div>
@@ -99,9 +107,10 @@ export function Achievements({ playerId }) {
           <>
             <div className="s-sect" style={{ color: "#FFD60A" }}>🏆 Получено · {earnedList.length}</div>
             <div className="ach-grid">
-              {earnedList.map(code => (
-                <AchCard key={code} code={code} earnedAt={earned.get(code)} />
-              ))}
+              {earnedList.map(code => {
+                const a = achs.find(x => x.code === code);
+                return <AchCard key={code} code={code} earnedAt={earned.get(code)} seasonStartedAt={a?.seasonStartedAt} seasonEndsAt={a?.seasonEndsAt} />;
+              })}
             </div>
           </>
         )}
