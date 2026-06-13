@@ -301,8 +301,8 @@ export function Home({ navigate }) {
           <div className="user-hero-text">
             <div className="user-name">
               {me.name.split(" ")[0]}
-              {me.role === "admin" && !me.isSuper && <span className="badge badge-yellow">👑 admin</span>}
-              {me.isSuper && <span className="badge badge-yellow">⚡ super</span>}
+              {me.role === "admin" && !me.isSuper && <span className="badge badge-yellow">👑 {t.x.roleAdmin}</span>}
+              {me.isSuper && <span className="badge badge-yellow">⚡ {t.x.roleSuper}</span>}
               {me.searching && <span className="badge badge-green">{t.nav.searching}</span>}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }}>

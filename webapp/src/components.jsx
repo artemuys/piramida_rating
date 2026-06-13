@@ -1,4 +1,5 @@
 import { Component, useEffect, useRef, useState } from "react";
+import { getT } from "./i18n.js";
 import confetti from "canvas-confetti";
 import { useApp } from "./store.jsx";
 import { avaColor, initials, winPct, rankOf, RANKS, xpProgress, levelFromXp, xpToReachLevel } from "./util.js";
@@ -20,7 +21,7 @@ export function Ava({ id, name, size = 38, ringColor }) {
 
 export function Crown({ role }) {
   if (role !== "admin") return null;
-  return <span title="admin" style={{ marginLeft: 4 }}>👑</span>;
+  return <span style={{ marginLeft: 4 }}>👑</span>;
 }
 
 function AnimatedCounter({ value, duration = 900 }) {
@@ -157,12 +158,13 @@ export function StreakProgress({ streak }) {
 }
 
 export function WinStreak({ matches }) {
+  const { t } = useApp();
   if (!matches || matches.length === 0) return null;
   const last6 = matches.slice(0, 6);
   return (
     <div className="win-streak-row">
       {last6.map((m, i) => (
-        <div key={i} className={`ws-dot ${m.iWon || m.won ? "ws-w" : "ws-l"}`} title={m.iWon || m.won ? "W" : "L"} />
+        <div key={i} className={`ws-dot ${m.iWon || m.won ? "ws-w" : "ws-l"}`} title={m.iWon || m.won ? t.x.winDot : t.x.lossDot} />
       ))}
       {matches.length > 6 && <span className="ws-more">···</span>}
     </div>
@@ -463,12 +465,13 @@ export class ErrorBoundary extends Component {
   }
   render() {
     if (this.state.error) {
+      const t = getT(localStorage.getItem("lang") || "ru");
       return (
         <div className="fatal">
           <div className="fatal-icon">😵</div>
-          <div>Something went wrong</div>
+          <div>{t.x.crashMsg}</div>
           <button className="btn-primary" style={{ maxWidth: 220 }} onClick={() => { this.setState({ error: null }); location.reload(); }}>
-            Reload
+            {t.x.reload}
           </button>
         </div>
       );

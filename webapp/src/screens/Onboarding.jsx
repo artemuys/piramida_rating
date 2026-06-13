@@ -113,7 +113,7 @@ export function Onboarding() {
           />
           <div className="ob-field-hint">
             {name.trim().length > 0 && !nameValid
-              ? t.step0.nameErr ?? "⚠️ Letters only, no spaces or special characters, minimum 2"
+              ? t.step0.nameErr
               : t.step0.hint}
           </div>
           <button className="ob-btn" disabled={!nameValid} onClick={() => setStep(2)}>{t.step0.next}</button>
