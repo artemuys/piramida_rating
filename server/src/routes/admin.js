@@ -494,6 +494,62 @@ export default async function adminRoutes(app) {
     };
   });
 
+  // ── Суперадмин: список матчей ─────────────────────────────
+  app.get("/admin/matches", (req) => {
+    requireSuperAdmin(req);
+    const query = clean(req.query?.q ?? "", 40);
+    let rows;
+    if (/^\d+$/.test(query)) {
+      rows = q(
+        `SELECT m.*, i.name AS i_name, o.name AS o_name
+         FROM matches m
+         JOIN users i ON i.id = m.initiator_id
+         JOIN users o ON o.id = m.opponent_id
+         WHERE m.id = ? OR m.initiator_id = ? OR m.opponent_id = ?
+         ORDER BY m.created_at DESC LIMIT 50`
+      ).all(Number(query), Number(query), Number(query));
+    } else {
+      rows = q(
+        `SELECT m.*, i.name AS i_name, o.name AS o_name
+         FROM matches m
+         JOIN users i ON i.id = m.initiator_id
+         JOIN users o ON o.id = m.opponent_id
+         ORDER BY m.created_at DESC LIMIT 80`
+      ).all();
+    }
+    return {
+      matches: rows.map(m => ({
+        id: m.id, status: m.status,
+        initiatorId: m.initiator_id, initiatorName: m.i_name,
+        opponentId: m.opponent_id, opponentName: m.o_name,
+        winnerId: m.winner_id, delta: m.delta,
+        createdAt: m.created_at, resolvedAt: m.resolved_at,
+      })),
+    };
+  });
+
+  // ── Суперадмин: отмена/аннулирование матча ───────────────
+  app.post("/admin/matches/:id/cancel", (req) => {
+    requireSuperAdmin(req);
+    const matchId = Number(req.params.id) || 0;
+    const match = q(`SELECT * FROM matches WHERE id = ?`).get(matchId);
+    if (!match) throw new ApiError(404, "not_found");
+    if (match.status === "cancelled") throw new ApiError(400, "already_cancelled");
+
+    tx(() => {
+      if (match.status === "confirmed" && match.winner_id && match.delta) {
+        const loserId = match.winner_id === match.initiator_id ? match.opponent_id : match.initiator_id;
+        q(`UPDATE users SET elo = elo - ?, wins_count = MAX(0, wins_count - 1), matches_count = MAX(0, matches_count - 1) WHERE id = ?`)
+          .run(match.delta, match.winner_id);
+        q(`UPDATE users SET elo = elo + ?, matches_count = MAX(0, matches_count - 1) WHERE id = ?`)
+          .run(match.delta, loserId);
+      }
+      q(`UPDATE matches SET status = 'cancelled', resolved_at = ? WHERE id = ?`).run(now(), matchId);
+      audit(req.user.id, null, `cancel_match:${matchId}:was_${match.status}`);
+    });
+    return { ok: true };
+  });
+
   const resolveConflictSchema = {
     body: {
       type: "object",

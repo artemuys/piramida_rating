@@ -7,6 +7,7 @@ import { fmtAgo } from "../util.js";
 
 const TABS = [
   { id: "users",     label: "👥 Игроки" },
+  { id: "matches",   label: "🎱 Матчи" },
   { id: "announce",  label: "📢 Объявления" },
   { id: "seasons",   label: "🏆 Сезоны" },
   { id: "conflicts", label: "⚔️ Конфликты" },
@@ -37,6 +38,7 @@ export function SuperAdmin({ navigate }) {
       </div>
 
       {tab === "users"     && <UsersTab navigate={navigate} toast={toast} toastError={toastError} />}
+      {tab === "matches"   && <MatchesTab toast={toast} toastError={toastError} />}
       {tab === "announce"  && <AnnounceTab toast={toast} toastError={toastError} />}
       {tab === "seasons"   && <SeasonsTab toast={toast} toastError={toastError} />}
       {tab === "conflicts" && <ConflictsTab toast={toast} toastError={toastError} />}
@@ -216,6 +218,101 @@ function UsersTab({ navigate, toast, toastError }) {
         <div style={{ height: 8 }} />
       </div>
     </>
+  );
+}
+
+// ── Матчи ─────────────────────────────────────────────────────────────────────
+const STATUS_LABEL = {
+  pending: { label: "Ожидает", color: "#FF9F0A" },
+  confirmed: { label: "Подтверждён", color: "#30D158" },
+  conflict: { label: "Конфликт", color: "#FF453A" },
+  timeout: { label: "Таймаут", color: "rgba(255,255,255,.4)" },
+  cancelled: { label: "Отменён", color: "rgba(255,255,255,.25)" },
+};
+
+function MatchesTab({ toast, toastError }) {
+  const [query, setQuery] = useState("");
+  const [matches, setMatches] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const debounceRef = useRef(null);
+
+  const load = useCallback((q) => {
+    api.get(`/admin/matches${q ? `?q=${encodeURIComponent(q)}` : ""}`)
+      .then(r => setMatches(r.matches))
+      .catch(e => { toastError(e); setMatches([]); });
+  }, [toastError]);
+
+  useEffect(() => { load(""); }, [load]);
+
+  useEffect(() => {
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => load(query.trim()), 300);
+    return () => clearTimeout(debounceRef.current);
+  }, [query, load]);
+
+  async function cancelMatch(m) {
+    const label = m.status === "confirmed"
+      ? `Аннулировать матч #${m.id}? ЭЛО будет откатено (${m.initiatorName} vs ${m.opponentName})`
+      : `Отменить матч #${m.id} (${m.initiatorName} vs ${m.opponentName})?`;
+    if (!(await tgConfirm(label))) return;
+    setBusy(true);
+    try {
+      await api.post(`/admin/matches/${m.id}/cancel`);
+      haptic("ok");
+      toast("✓ Матч отменён", "ok");
+      load(query.trim());
+    } catch (e) { toastError(e); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <div className="card">
+      <div className="inp-wrap" style={{ paddingTop: 14 }}>
+        <input
+          className="inp"
+          placeholder="ID матча или игрока"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+        />
+      </div>
+      {matches === null && <Spinner />}
+      {matches !== null && matches.length === 0 && <Empty icon="🎱" text="Матчей нет" />}
+      {matches !== null && matches.map(m => {
+        const st = STATUS_LABEL[m.status] ?? { label: m.status, color: "rgba(255,255,255,.4)" };
+        const winnerName = m.winnerId
+          ? (m.winnerId === m.initiatorId ? m.initiatorName : m.opponentName)
+          : null;
+        return (
+          <div key={m.id} className="announce-row">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+              <span style={{ fontSize: 12, color: "rgba(255,255,255,.4)" }}>
+                Матч #{m.id} · {new Date(m.createdAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+              </span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: st.color }}>{st.label}</span>
+            </div>
+            <div style={{ fontSize: 14, marginBottom: 4 }}>
+              {m.initiatorName} <span style={{ color: "rgba(255,255,255,.35)" }}>vs</span> {m.opponentName}
+            </div>
+            {winnerName && (
+              <div style={{ fontSize: 12, color: "#30D158", marginBottom: 4 }}>
+                Победил: {winnerName}{m.delta ? ` (+${m.delta} ЭЛО)` : ""}
+              </div>
+            )}
+            {m.status !== "cancelled" && (
+              <button
+                className="btn-tonal red"
+                style={{ padding: "5px 12px", fontSize: 12, width: "auto", marginTop: 4 }}
+                disabled={busy}
+                onClick={() => cancelMatch(m)}
+              >
+                {m.status === "confirmed" ? "🔄 Аннулировать" : "✕ Отменить"}
+              </button>
+            )}
+          </div>
+        );
+      })}
+      <div style={{ height: 8 }} />
+    </div>
   );
 }
 
