@@ -199,24 +199,24 @@ export function Settings() {
       </div>
 
       <div className="card">
-        <div className="s-sect">{t.disc_switch?.label ?? "Дисциплина"}</div>
+        <div className="s-sect">{t.disc_switch.label}</div>
         <div className="tog-wrap">
           <div className="tog-g" style={{ width: "100%" }}>
             <button
               className={`tog${activeDiscipline === 'pool' ? " on" : ""}`}
               onClick={() => setActiveDiscipline('pool')}
             >
-              🎱 {t.disc_switch?.pool ?? "Пул"}
+              🎱 {t.disc_switch.pool}
             </button>
             <button
               className={`tog${activeDiscipline === 'pyramid' ? " on" : ""}`}
               onClick={() => setActiveDiscipline('pyramid')}
             >
-              🔺 {t.disc_switch?.pyramid ?? "Пирамида"}
+              🔺 {t.disc_switch.pyramid}
             </button>
           </div>
         </div>
-        <div className="s-hint">{t.disc_switch?.hint ?? "Пул и Пирамида полностью разделены — разные рейтинги, достижения и рекорды."}</div>
+        <div className="s-hint">{t.disc_switch.hint}</div>
       </div>
 
       <div className="card">

@@ -184,13 +184,13 @@ export function Onboarding() {
         <>
           <div className="ob-prefs">
             <div>
-              <div className="ob-pref-label">{t.disc_switch?.label ?? "Дисциплина"}</div>
+              <div className="ob-pref-label">{t.disc_switch.label}</div>
               <div className="tog-g">
                 <button className={`tog${activeDiscipline === 'pool' ? " on" : ""}`} onClick={() => setActiveDiscipline('pool')}>
-                  🎱 {t.disc_switch?.pool ?? "Пул"}
+                  🎱 {t.disc_switch.pool}
                 </button>
                 <button className={`tog${activeDiscipline === 'pyramid' ? " on" : ""}`} onClick={() => setActiveDiscipline('pyramid')}>
-                  🔺 {t.disc_switch?.pyramid ?? "Пирамида"}
+                  🔺 {t.disc_switch.pyramid}
                 </button>
               </div>
             </div>

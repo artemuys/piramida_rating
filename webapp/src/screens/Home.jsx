@@ -326,7 +326,7 @@ export function Home({ navigate }) {
         {lastMatch && (
           <div className="last-match-row">
             <div className="last-match-dot" style={{ background: lastMatch.iWon ? "#30D158" : "#FF453A" }} />
-            <span className="last-match-label">{t.x.lastMatch || "Последний матч"}:</span>
+            <span className="last-match-label">{t.x.lastMatch}:</span>
             <span className="last-match-result" style={{ color: lastMatch.iWon ? "#30D158" : "#FF453A" }}>
               {lastMatch.iWon ? t.modal.win : t.modal.lose}
               {" "}{lastMatch.delta > 0 ? "+" : ""}{lastMatch.delta} {t.elo}

@@ -53,6 +53,7 @@ export function Stats({ elo, place, matches, wins, t }) {
 }
 
 export function RankBadge({ elo, size = "md" }) {
+  const { t } = useApp();
   const rank = rankOf(elo);
   const sizes = { sm: { font: 11, px: "3px 8px" }, md: { font: 13, px: "4px 12px" }, lg: { font: 16, px: "7px 16px" } };
   const s = sizes[size] || sizes.md;
@@ -67,19 +68,20 @@ export function RankBadge({ elo, size = "md" }) {
         border: `1px solid ${rank.color}33`,
       }}
     >
-      {rank.emoji} {rank.label}
+      {rank.emoji} {t.ranks[rank.name]}
     </span>
   );
 }
 
 export function RankProgress({ elo }) {
+  const { t } = useApp();
   const rank = rankOf(elo);
   if (!rank.next) {
     return (
       <div className="rank-progress-wrap">
         <div className="rank-progress-label">
-          <span>{rank.emoji} {rank.label}</span>
-          <span style={{ color: rank.color }}>Максимальный ранг</span>
+          <span>{rank.emoji} {t.ranks[rank.name]}</span>
+          <span style={{ color: rank.color }}>{t.ranks.maxRank}</span>
         </div>
         <div className="rank-progress-track">
           <div className="rank-progress-fill" style={{ width: "100%", background: rank.color, boxShadow: `0 0 8px ${rank.color}` }} />
@@ -93,8 +95,8 @@ export function RankProgress({ elo }) {
   return (
     <div className="rank-progress-wrap">
       <div className="rank-progress-label">
-        <span style={{ color: rank.color }}>{rank.emoji} {rank.label}</span>
-        <span style={{ color: "rgba(255,255,255,.4)", fontSize: 12 }}>до {nextRank?.emoji} {nextRank?.label}: +{toNext} эло</span>
+        <span style={{ color: rank.color }}>{rank.emoji} {t.ranks[rank.name]}</span>
+        <span style={{ color: "rgba(255,255,255,.4)", fontSize: 12 }}>{t.ranks.toNext(nextRank?.emoji, t.ranks[nextRank?.name], toNext)}</span>
       </div>
       <div className="rank-progress-track">
         <div className="rank-progress-fill" style={{ width: `${pct}%`, background: rank.color, boxShadow: `0 0 8px ${rank.color}` }} />
@@ -104,11 +106,12 @@ export function RankProgress({ elo }) {
 }
 
 export function LevelBar({ xp, style }) {
+  const { t } = useApp();
   const prog = xpProgress(xp ?? 0);
   return (
     <div className="level-bar-wrap" style={style}>
       <div className="level-bar-row">
-        <span className="level-bar-lbl">Ур. <strong>{prog.level}</strong></span>
+        <span className="level-bar-lbl">{t.player_ext.lvl} <strong>{prog.level}</strong></span>
         <span className="level-bar-xp">{prog.current} / {prog.needed} XP</span>
       </div>
       <div className="level-bar-track">
@@ -131,16 +134,17 @@ export function StreakBadge({ streak }) {
 }
 
 export function StreakProgress({ streak }) {
+  const { t } = useApp();
   const GOAL = 5;
   const isWin = streak > 0;
   const isLose = streak < 0;
   const count = Math.abs(streak ?? 0);
   const filled = Math.min(count, GOAL);
   const label = isWin
-    ? (count >= GOAL ? `🔥 Серия ${count}!` : `🔥 Серия побед: ${count} / ${GOAL}`)
+    ? (count >= GOAL ? t.streak.winFull(count) : t.streak.winProgress(count, GOAL))
     : isLose
-    ? (count >= GOAL ? `❄️ Проигрышная серия: ${count}` : `❄️ Поражений подряд: ${count} / ${GOAL}`)
-    : "Серия: 0";
+    ? (count >= GOAL ? t.streak.loseFull(count) : t.streak.loseProgress(count, GOAL))
+    : t.streak.zero;
 
   return (
     <div className="streak-progress-wrap">
@@ -330,49 +334,36 @@ export function MatchResultModal({ match, xpBefore, onClose }) {
   );
 }
 
+const ACH_ICONS = {
+  calibration: "🎯", elite: "👑", season_master: "🏆",
+  new_peak_1100: "📈", new_peak_1200: "📈", new_peak_1300: "📈", new_peak_1400: "📈", new_peak_1500: "📈",
+  on_fire_5: "🔥", inferno_7: "🔥", immortal_10: "⚡",
+  groundhog: "😤", rollercoaster: "🎢", own_atmo: "🫂", headhunter: "🎯", extrovert: "🌍",
+  veteran_20: "🏅", veteran_50: "🏅", veteran_100: "🥇", veteran_200: "🥇", veteran_500: "💎", veteran_1000: "👑",
+  bad_day: "😤", main_donor: "💸", tried: "🙏", phoenix: "🦅",
+};
+
 export function AchievementUnlockModal({ code, earnedAt, onClose }) {
-  const META = {
-    calibration:   { icon: "🎯", label: "Калибровка пройдена",     desc: "Сыграть первые 10 матчей" },
-    elite:         { icon: "👑", label: "Элита",                   desc: "Войти в топ-3 клуба по рейтингу" },
-    season_master: { icon: "🏆", label: "Хозяин сезона",           desc: "Топ-3 по итогам сезона" },
-    new_peak_1100: { icon: "📈", label: "Новый пик · 1100",        desc: "Достичь рейтинга 1100" },
-    new_peak_1200: { icon: "📈", label: "Новый пик · 1200",        desc: "Достичь рейтинга 1200" },
-    new_peak_1300: { icon: "📈", label: "Новый пик · 1300",        desc: "Достичь рейтинга 1300" },
-    new_peak_1400: { icon: "📈", label: "Новый пик · 1400",        desc: "Достичь рейтинга 1400" },
-    new_peak_1500: { icon: "📈", label: "Новый пик · 1500",        desc: "Достичь рейтинга 1500" },
-    on_fire_5:     { icon: "🔥", label: "На кураже",               desc: "5 побед подряд" },
-    inferno_7:     { icon: "🔥", label: "В огне",                  desc: "7 побед подряд" },
-    immortal_10:   { icon: "⚡", label: "Бессмертный",             desc: "10 побед подряд" },
-    groundhog:     { icon: "😤", label: "День сурка",              desc: "Победить одного и того же 10 раз за день" },
-    rollercoaster: { icon: "🎢", label: "Американские горки",      desc: "В/П/В/П/В/П — 6 матчей подряд" },
-    own_atmo:      { icon: "🫂", label: "Своя атмосфера",          desc: "10 матчей подряд с одним соперником" },
-    headhunter:    { icon: "🎯", label: "Охотник за скальпами",    desc: "10 разных соперников за неделю" },
-    extrovert:     { icon: "🌍", label: "Экстраверт",              desc: "Сыграть с 20 уникальными игроками" },
-    veteran_20:    { icon: "🏅", label: "Завсегдатай · 20",        desc: "20 матчей сыграно" },
-    veteran_50:    { icon: "🏅", label: "Завсегдатай · 50",        desc: "50 матчей сыграно" },
-    veteran_100:   { icon: "🥇", label: "Завсегдатай · 100",       desc: "100 матчей сыграно" },
-    veteran_200:   { icon: "🥇", label: "Завсегдатай · 200",       desc: "200 матчей сыграно" },
-    veteran_500:   { icon: "💎", label: "Легенда · 500",           desc: "500 матчей сыграно" },
-    veteran_1000:  { icon: "👑", label: "Легенда · 1000",          desc: "1000 матчей сыграно" },
-    bad_day:       { icon: "😤", label: "Не твой день",            desc: "6 поражений подряд" },
-    main_donor:    { icon: "💸", label: "Главный спонсор",         desc: "Проиграть одному 4 раза за день" },
-    tried:         { icon: "🙏", label: "Ты пытался",              desc: "Проиграть игроку из топ-3" },
-    phoenix:       { icon: "🦅", label: "Феникс",                  desc: "Выиграть после 4+ поражений подряд" },
-  };
-  const meta = META[code] || (/^season_master_/.test(code) ? { icon: "🏆", label: "Хозяин сезона", desc: "Топ-3 по итогам сезона" } : { icon: "🏅", label: code, desc: "" });
+  const { t } = useApp();
+  const baseCode = code.startsWith("p:") ? code.slice(2) : code;
+  const isSeasonMaster = /^season_master_(\d+)$/.test(baseCode);
+  const metaT = t.ach.meta[baseCode] ?? (isSeasonMaster ? t.ach.meta.season_master : null);
+  const label = metaT ? (isSeasonMaster ? `${metaT.label} #${baseCode.match(/\d+$/)[0]}` : metaT.label) : baseCode;
+  const desc  = metaT?.desc ?? "";
+  const icon  = ACH_ICONS[baseCode] ?? (isSeasonMaster ? "🏆" : "🏅");
   return (
     <div className="modal-overlay center ach-unlock-overlay" onClick={onClose}>
       <div className="modal ach-unlock-modal" onClick={e => e.stopPropagation()}>
         <div className="ach-unlock-glow" style={{ background: "radial-gradient(circle at 50% 0%, rgba(255,214,10,.18) 0%, transparent 70%)" }} />
         <div className="ach-unlock-icon-wrap">
-          <div className="ach-unlock-icon">{meta.icon}</div>
+          <div className="ach-unlock-icon">{icon}</div>
           <div className="ach-unlock-rays" />
         </div>
-        <div className="ach-unlock-badge">🏆 Новое достижение!</div>
-        <div className="ach-unlock-label">{meta.label}</div>
-        <div className="ach-unlock-desc">{meta.desc}</div>
+        <div className="ach-unlock-badge">{t.x.newAch}</div>
+        <div className="ach-unlock-label">{label}</div>
+        <div className="ach-unlock-desc">{desc}</div>
         <button className="modal-btn-done" style={{ margin: "20px 20px 32px", width: "calc(100% - 40px)" }} onClick={onClose}>
-          Отлично!
+          {t.x.excellent}
         </button>
       </div>
     </div>
@@ -380,6 +371,7 @@ export function AchievementUnlockModal({ code, earnedAt, onClose }) {
 }
 
 function XpBarAnim({ xpBefore, xpAfter, gain }) {
+  const { t } = useApp();
   const progBefore = xpProgress(xpBefore);
   const progAfter  = xpProgress(xpAfter);
   const leveledUp  = progAfter.level > progBefore.level;
@@ -397,8 +389,8 @@ function XpBarAnim({ xpBefore, xpAfter, gain }) {
   return (
     <div className="modal-xp-wrap">
       <div className="modal-xp-top">
-        <span className="modal-xp-lvl">⭐ Ур. {level}</span>
-        {leveledUp && <span className="modal-xp-levelup">УРОВЕНЬ ВВЕРХ!</span>}
+        <span className="modal-xp-lvl">⭐ {t.player_ext.lvl} {level}</span>
+        {leveledUp && <span className="modal-xp-levelup">{t.x.levelUp}</span>}
         <span className="modal-xp-gain">+{gain} XP</span>
       </div>
       <div className="modal-xp-track">

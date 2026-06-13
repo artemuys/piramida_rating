@@ -58,36 +58,6 @@ export function getAchMeta(code, t, extra = {}) {
     return { icon: "🏆", label, desc, pts: 100 };
   }
 
-  // Russian fallback
-  const RU_META = {
-    season_master: { label: "Хозяин сезона",       desc: "Топ-3 по итогам сезона" },
-    calibration:   { label: "Калибровка пройдена", desc: "Сыграть первые 10 матчей" },
-    elite:         { label: "Элита",               desc: "Войти в топ-3 клуба по рейтингу" },
-    new_peak_1100: { label: "Новый пик · 1100",    desc: "Достичь рейтинга 1100" },
-    new_peak_1200: { label: "Новый пик · 1200",    desc: "Достичь рейтинга 1200" },
-    new_peak_1300: { label: "Новый пик · 1300",    desc: "Достичь рейтинга 1300" },
-    new_peak_1400: { label: "Новый пик · 1400",    desc: "Достичь рейтинга 1400" },
-    new_peak_1500: { label: "Новый пик · 1500",    desc: "Достичь рейтинга 1500" },
-    on_fire_5:     { label: "На кураже",           desc: "5 побед подряд" },
-    inferno_7:     { label: "В огне",              desc: "7 побед подряд" },
-    immortal_10:   { label: "Бессмертный",         desc: "10 побед подряд" },
-    groundhog:     { label: "День сурка",          desc: "Победить одного и того же 10 раз за день" },
-    rollercoaster: { label: "Американские горки",  desc: "В/П/В/П/В/П — 6 матчей подряд" },
-    own_atmo:      { label: "Своя атмосфера",      desc: "10 матчей подряд с одним соперником" },
-    headhunter:    { label: "Охотник за скальпами", desc: "10 разных соперников за неделю" },
-    extrovert:     { label: "Экстраверт",          desc: "Сыграть с 20 уникальными игроками" },
-    veteran_20:    { label: "Завсегдатай · 20",    desc: "20 матчей сыграно" },
-    veteran_50:    { label: "Завсегдатай · 50",    desc: "50 матчей сыграно" },
-    veteran_100:   { label: "Завсегдатай · 100",   desc: "100 матчей сыграно" },
-    veteran_200:   { label: "Завсегдатай · 200",   desc: "200 матчей сыграно" },
-    veteran_500:   { label: "Легенда · 500",       desc: "500 матчей сыграно" },
-    veteran_1000:  { label: "Легенда · 1000",      desc: "1000 матчей сыграно" },
-    bad_day:       { label: "Не твой день",        desc: "6 поражений подряд" },
-    main_donor:    { label: "Главный спонсор",     desc: "Проиграть одному 4 раза за день" },
-    tried:         { label: "Ты пытался",          desc: "Проиграть игроку из топ-3" },
-    phoenix:       { label: "Феникс",              desc: "Выиграть после 4+ поражений подряд" },
-  };
-  if (RU_META[baseCode]) return { icon: icon ?? "🏅", ...RU_META[baseCode], pts };
   return { icon: "❓", label: baseCode, desc: "", pts: 0 };
 }
 
@@ -101,7 +71,7 @@ function AchCard({ code, earnedAt, locked, seasonStartedAt, seasonEndsAt, t, lan
         <div className="ach-label">{meta.label}</div>
         <div className="ach-desc">{meta.desc}</div>
         <div className="ach-pts-row">
-          <span className="ach-pts">{locked ? "" : "✓ "}{meta.pts} {t?.ach?.pts ?? "очк."}</span>
+          <span className="ach-pts">{locked ? "" : "✓ "}{meta.pts} {t.ach.pts}</span>
           {earnedAt && !locked && (
             <span className="ach-date">
               {new Date(earnedAt).toLocaleDateString(locale, { day: "numeric", month: "short" })}

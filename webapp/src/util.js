@@ -78,12 +78,12 @@ export function winPct(matches, wins) {
 }
 
 export const RANKS = [
-  { name: "bronze",   label: "Бронза",  emoji: "🥉", min: 0,    color: "#CD7F32", gradient: "linear-gradient(135deg,#5C3A1E,#8B5E3C)", next: 1100 },
-  { name: "silver",   label: "Серебро", emoji: "🥈", min: 1100, color: "#C0C0C0", gradient: "linear-gradient(135deg,#3a3a3c,#636366)",   next: 1200 },
-  { name: "platinum", label: "Платина", emoji: "🔷", min: 1200, color: "#A8D8EA", gradient: "linear-gradient(135deg,#1a3a4a,#2a6a8a)",   next: 1300 },
-  { name: "emerald",  label: "Изумруд", emoji: "💚", min: 1300, color: "#50C878", gradient: "linear-gradient(135deg,#0d3320,#1a6040)",   next: 1400 },
-  { name: "diamond",  label: "Алмаз",   emoji: "💎", min: 1400, color: "#7DF9FF", gradient: "linear-gradient(135deg,#0a2a3a,#1a5a7a)",   next: 1500 },
-  { name: "master",   label: "Мастер",  emoji: "👑", min: 1500, color: "#FFD700", gradient: "linear-gradient(135deg,#3a2a00,#7a5500)",   next: null },
+  { name: "bronze",   emoji: "🥉", min: 0,    color: "#CD7F32", gradient: "linear-gradient(135deg,#5C3A1E,#8B5E3C)", next: 1100 },
+  { name: "silver",   emoji: "🥈", min: 1100, color: "#C0C0C0", gradient: "linear-gradient(135deg,#3a3a3c,#636366)",   next: 1200 },
+  { name: "platinum", emoji: "🔷", min: 1200, color: "#A8D8EA", gradient: "linear-gradient(135deg,#1a3a4a,#2a6a8a)",   next: 1300 },
+  { name: "emerald",  emoji: "💚", min: 1300, color: "#50C878", gradient: "linear-gradient(135deg,#0d3320,#1a6040)",   next: 1400 },
+  { name: "diamond",  emoji: "💎", min: 1400, color: "#7DF9FF", gradient: "linear-gradient(135deg,#0a2a3a,#1a5a7a)",   next: 1500 },
+  { name: "master",   emoji: "👑", min: 1500, color: "#FFD700", gradient: "linear-gradient(135deg,#3a2a00,#7a5500)",   next: null },
 ];
 
 export function rankOf(elo) {
