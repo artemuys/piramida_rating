@@ -3,10 +3,11 @@ import { api } from "../api.js";
 import { useApp } from "../store.jsx";
 import { Ava, Crown, Spinner, Empty, RankBadge } from "../components.jsx";
 import { fmtDate, rankOf } from "../util.js";
+import { LOCALES } from "../i18n.js";
 
 /** Рейтинг клуба: топ-100, текущий пользователь подсвечен */
 export function Rating({ navigate }) {
-  const { me, t, toastError } = useApp();
+  const { me, t, lang, toastError } = useApp();
   const [data, setData] = useState(null);
 
   useEffect(() => {
@@ -17,8 +18,9 @@ export function Rating({ navigate }) {
 
   const inTop = data.top.some((p) => p.id === me.id);
   const season = data.season;
+  const rs = t.season_ext;
   const seasonEndStr = season
-    ? new Date(season.endsAt).toLocaleDateString("ru-RU", { day: "numeric", month: "numeric", year: "numeric" })
+    ? new Date(season.endsAt).toLocaleDateString(LOCALES[lang] ?? "ru-RU", { day: "numeric", month: "numeric", year: "numeric" })
     : null;
 
   return (
@@ -27,13 +29,13 @@ export function Rating({ navigate }) {
       <div className="card" style={{ padding: "14px 20px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
           <span style={{ fontSize: 18 }}>🏆</span>
-          <span style={{ fontWeight: 700, fontSize: 15 }}>Сезон #{season.id}</span>
+          <span style={{ fontWeight: 700, fontSize: 15 }}>{rs.season}{season.id}</span>
           <span style={{ marginLeft: "auto", fontSize: 13, color: "#FF9F0A", fontWeight: 600 }}>
-            Конец: {seasonEndStr}
+            {rs.ends} {seasonEndStr}
           </span>
         </div>
         <div style={{ fontSize: 12, color: "rgba(255,255,255,.5)", lineHeight: 1.55 }}>
-          После окончания сезона эло сбрасывается с частичным сохранением (30% от разницы с 1000). Топ-3 игрока получают достижение «🏆 Хозяин сезона».
+          {rs.hint}
         </div>
       </div>
     )}

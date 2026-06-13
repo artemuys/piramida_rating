@@ -78,7 +78,7 @@ export function Settings() {
       await api.patch("/me", { name: n });
       await refreshMe();
       haptic("ok");
-      toast("✓ Имя изменено", "ok");
+      toast(t.settings_ext.nameSaved, "ok");
       setNewName("");
     } catch (e) {
       toastError(e);
@@ -92,20 +92,20 @@ export function Settings() {
       <div className="card">
         <div className="s-sect">{t.settings.profile}</div>
         <div className="s-row" style={{ alignItems: "center" }}>
-          <div className="s-lbl">👤 Имя</div>
+          <div className="s-lbl">{t.settings_ext.nameLabel}</div>
           <span style={{ fontSize: 15, color: "rgba(255,255,255,.6)" }}>{me.name}</span>
         </div>
 
         {me.nameChangeAllowed ? (
           <>
             <div className="s-hint" style={{ paddingTop: 0, color: "#FF9F0A" }}>
-              У вас есть одна возможность сменить имя.
+              {t.settings_ext.nameChangeHint}
             </div>
             <div style={{ padding: "0 16px 12px", display: "flex", gap: 8 }}>
               <input
                 className="s-inp"
                 style={{ flex: 1 }}
-                placeholder="Новое имя"
+                placeholder={t.settings_ext.newNamePh}
                 value={newName}
                 maxLength={40}
                 onChange={e => setNewName(e.target.value)}
@@ -116,16 +116,16 @@ export function Settings() {
                 disabled={nameBusy || newName.trim().length < 2}
                 onClick={saveName}
               >
-                Сохранить
+                {t.settings_ext.save}
               </button>
             </div>
           </>
         ) : (
-          <div className="s-hint" style={{ paddingTop: 0 }}>Имя задаётся при регистрации и не меняется.</div>
+          <div className="s-hint" style={{ paddingTop: 0 }}>{t.settings_ext.nameFixed}</div>
         )}
 
         <div className="s-row" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
-          <div className="s-lbl">📩 Способ связи <span style={{ color: "#FF453A", fontSize: 11 }}>обязательно</span></div>
+          <div className="s-lbl">{t.settings.contact} <span style={{ color: "#FF453A", fontSize: 11 }}>{t.settings_ext.required}</span></div>
           <div className="tog-g" style={{ width: "100%" }}>
             <button
               className={`tog${contactType === "telegram" ? " on" : ""}`}
@@ -135,12 +135,12 @@ export function Settings() {
             >
               Telegram
             </button>
-            <button className={`tog${contactType === "phone" ? " on" : ""}`} onClick={() => setContactType("phone")}>Телефон</button>
+            <button className={`tog${contactType === "phone" ? " on" : ""}`} onClick={() => setContactType("phone")}>{t.settings_ext.phoneToggle}</button>
           </div>
 
           {contactType === "telegram" && !canUseTelegram && (
             <div style={{ fontSize: 13, color: "rgba(255,255,255,.45)", padding: "2px 2px 0" }}>
-              У вас нет @username в Telegram — добавьте его в настройках Telegram, затем вернитесь сюда.
+              {t.settings_ext.noTgUsername}
             </div>
           )}
           {contactType === "telegram" && canUseTelegram && (
@@ -155,13 +155,13 @@ export function Settings() {
                 className="s-inp"
                 value={phone}
                 maxLength={20}
-                placeholder="+7 (___) ___-__-__"
+                placeholder={t.settings_ext.phonePh}
                 onChange={(e) => setPhone(e.target.value)}
                 style={phoneError ? { boxShadow: "0 0 0 2px #FF453A" } : {}}
               />
               {phoneError && (
                 <div style={{ fontSize: 12, color: "#FF453A", padding: "0 4px" }}>
-                  Неверный формат. Пример: +7 (999) 123-45-67
+                  {t.settings_ext.phoneError}
                 </div>
               )}
             </>
@@ -169,8 +169,8 @@ export function Settings() {
         </div>
         <div className="s-hint">
           {contactType === "telegram"
-            ? "Прямая ссылка на ваш Telegram — видна активированным игрокам."
-            : "Номер телефона — видно только активированным игрокам."}
+            ? t.settings_ext.tgHint
+            : t.settings_ext.phoneHint}
         </div>
       </div>
 

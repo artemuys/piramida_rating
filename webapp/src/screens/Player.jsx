@@ -64,7 +64,7 @@ export function Player({ params, navigate }) {
         <DuelModal
           opponent={player}
           onClose={() => setShowDuel(false)}
-          onSent={() => toast("⚔️ Вызов отправлен", "ok")}
+          onSent={() => toast(t.duels.sentToast, "ok")}
         />
       )}
 
@@ -73,7 +73,7 @@ export function Player({ params, navigate }) {
           <div className="modal" style={{ maxHeight: "80vh", display: "flex", flexDirection: "column" }} onClick={e => e.stopPropagation()}>
             <div className="modal-grabber" />
             <div style={{ padding: "16px 20px 8px", fontSize: 18, fontWeight: 700 }}>
-              🏅 Достижения · {player.name.split(" ")[0]}
+              {t.player_ext.achievementsOf} {player.name.split(" ")[0]}
             </div>
             <div style={{ overflowY: "auto", flex: 1, padding: "0 0 20px" }}>
               <Achievements playerId={player.id} />
@@ -93,11 +93,11 @@ export function Player({ params, navigate }) {
             <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap", alignItems: "center" }}>
               <RankBadge elo={player.elo} />
               {player.streak !== 0 && <StreakBadge streak={player.streak} />}
-              {player.achPoints > 0 && <span style={{ fontSize: 12, color: "#FFD60A", background: "rgba(255,214,10,.12)", borderRadius: 8, padding: "3px 8px" }}>🏆 {player.achPoints} очк.</span>}
+              {player.achPoints > 0 && <span style={{ fontSize: 12, color: "#FFD60A", background: "rgba(255,214,10,.12)", borderRadius: 8, padding: "3px 8px" }}>🏆 {player.achPoints} {t.pts}</span>}
             </div>
             <RankProgress elo={player.elo} />
             <div style={{ fontSize: 13, color: "rgba(255,255,255,.45)", marginTop: 5 }}>
-              {t.idLabel} {player.id} · Пик: {player.peakElo} · #{player.place}
+              {t.idLabel} {player.id} · {t.player_ext.peak} {player.peakElo} · #{player.place}
             </div>
           </div>
         </div>
@@ -106,7 +106,7 @@ export function Player({ params, navigate }) {
           <div className="stat"><div className="stat-val">{player.elo}</div><div className="stat-lbl">{t.elo}</div></div>
           <div className="stat"><div className="stat-val">{player.matchesCount}</div><div className="stat-lbl">{t.matches}</div></div>
           <div className="stat"><div className="stat-val">{winPct(player.matchesCount, player.winsCount)}%</div><div className="stat-lbl">{t.wins}</div></div>
-          <div className="stat"><div className="stat-val">Ур.{player.level}</div><div className="stat-lbl">Уровень</div></div>
+          <div className="stat"><div className="stat-val">{t.player_ext.lvl}{player.level}</div><div className="stat-lbl">{t.player_ext.level}</div></div>
         </div>
 
         <LevelBar xp={player.xp} style={{ padding: "0 20px 12px" }} />
@@ -114,7 +114,7 @@ export function Player({ params, navigate }) {
         {/* Последние 6 матчей */}
         {recentMatches?.length > 0 && (
           <div style={{ padding: "4px 20px 12px" }}>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,.35)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 8 }}>Последние матчи</div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,.35)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 8 }}>{t.player_ext.recentMatches}</div>
             <WinStreak matches={recentMatches} />
           </div>
         )}
@@ -155,12 +155,12 @@ export function Player({ params, navigate }) {
                   style={{ background: "rgba(255,159,10,.15)", color: "#FF9F0A" }}
                   onClick={() => setShowDuel(true)}
                 >
-                  ⚔️ Дуэль
+                  {t.player_ext.duel}
                 </button>
               )}
             </div>
             <button className="btn-tonal" style={{ background: "rgba(255,214,10,.1)", color: "#FFD60A" }} onClick={() => setShowAch(true)}>
-              🏅 Достижения
+              {t.player_ext.achievements}
             </button>
           </div>
         </div>
@@ -170,7 +170,7 @@ export function Player({ params, navigate }) {
         <div className="card">
           <div className="btn-stack">
             <button className="btn-tonal" style={{ background: "rgba(255,214,10,.1)", color: "#FFD60A" }} onClick={() => setShowAch(true)}>
-              🏅 Мои достижения
+              {t.player_ext.myAchievements}
             </button>
           </div>
         </div>
@@ -179,20 +179,20 @@ export function Player({ params, navigate }) {
       {/* H2H счёт */}
       {!self && h2hTotal?.total > 0 && (
         <div className="card">
-          <div className="s-sect">Личный счёт с {player.name.split(" ")[0]}</div>
+          <div className="s-sect">{t.player_ext.h2h} {player.name.split(" ")[0]}</div>
           <div className="h2h-score">
             <div className="h2h-side h2h-mine">
               <div className="h2h-num">{myH2hWins}</div>
-              <div className="h2h-lbl">твои победы</div>
+              <div className="h2h-lbl">{t.player_ext.yourWins}</div>
             </div>
             <div className="h2h-divider">VS</div>
             <div className="h2h-side h2h-their">
               <div className="h2h-num">{theirH2hWins}</div>
-              <div className="h2h-lbl">победы {player.name.split(" ")[0]}</div>
+              <div className="h2h-lbl">{t.player_ext.theirWins} {player.name.split(" ")[0]}</div>
             </div>
           </div>
           <div className="hint" style={{ paddingBottom: 14 }}>
-            {h2hTotal.total} матч{h2hTotal.total === 1 ? "" : h2hTotal.total < 5 ? "а" : "ей"} сыграно
+            {t.player_ext.matchesPlayedStr(h2hTotal.total)}
           </div>
         </div>
       )}
@@ -219,7 +219,7 @@ export function Player({ params, navigate }) {
       {/* Последние матчи игрока */}
       {recentMatches?.length > 0 && (
         <div className="card">
-          <div className="s-sect">Последние матчи {self ? "мои" : player.name.split(" ")[0]}</div>
+          <div className="s-sect">{self ? t.player_ext.myRecentMatches : `${t.player_ext.recentMatchesOf} ${player.name.split(" ")[0]}`}</div>
           {recentMatches.map((m) => (
             <div
               className="row"

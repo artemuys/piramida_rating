@@ -102,7 +102,8 @@ function SearchBlock() {
 }
 
 function AchFeedModal({ code, onClose }) {
-  const meta = getAchMeta(code);
+  const { t } = useApp();
+  const meta = getAchMeta(code, t);
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
@@ -113,7 +114,7 @@ function AchFeedModal({ code, onClose }) {
           <div className="modal-sub">{meta.desc}</div>
         </div>
         <div className="modal-body" style={{ paddingTop: 4 }}>
-          <button className="modal-btn-done" onClick={onClose}>Понятно</button>
+          <button className="modal-btn-done" onClick={onClose}>{t.x.close}</button>
         </div>
       </div>
     </div>
@@ -121,6 +122,7 @@ function AchFeedModal({ code, onClose }) {
 }
 
 function LiveFeed({ navigate }) {
+  const { t } = useApp();
   const [feed, setFeed] = useState(null);
   const [achModal, setAchModal] = useState(null); // { code }
 
@@ -137,26 +139,26 @@ function LiveFeed({ navigate }) {
       case "match_win": {
         const winnerId = d.winnerId || item.actorId;
         const loserId = d.loserId || item.targetId;
-        const winnerName = (d.winnerName || item.actorName || "").trim() || "Игрок";
-        const loserName = (d.loserName || item.targetName || "").trim() || "Игрок";
+        const winnerName = (d.winnerName || item.actorName || "").trim() || t.feed.defaultName;
+        const loserName = (d.loserName || item.targetName || "").trim() || t.feed.defaultName;
         return (
           <div className="feed-text">
             🏆{" "}
             <span className="feed-name-link" onClick={() => winnerId && navigate("player", { playerId: winnerId, title: winnerName })}>{winnerName}</span>
-            {" обыграл "}
+            {" "}{t.feed.beat}{" "}
             <span className="feed-name-link" onClick={() => loserId && navigate("player", { playerId: loserId, title: loserName })}>{loserName}</span>
             {" ("}+{d.delta || "?"}{")" }
           </div>
         );
       }
       case "achievement": {
-        const meta = getAchMeta(d.code);
+        const meta = getAchMeta(d.code, t);
         const actorName = d.name || item.actorName;
         return (
           <div className="feed-text">
             {meta.icon}{" "}
             <span className="feed-name-link" onClick={() => item.actorId && navigate("player", { playerId: item.actorId, title: actorName })}>{actorName}</span>
-            {" получил "}
+            {" "}{t.feed.received}{" "}
             <span className="feed-ach-link" onClick={() => setAchModal({ code: d.code })}>«{meta.label}»</span>
           </div>
         );
@@ -167,19 +169,19 @@ function LiveFeed({ navigate }) {
           <div className="feed-text">
             ⬆️{" "}
             <span className="feed-name-link" onClick={() => item.actorId && navigate("player", { playerId: item.actorId, title: name })}>{name}</span>
-            {" достиг "}{d.rank}
+            {" "}{t.feed.reached}{" "}{d.rank}
           </div>
         );
       }
       case "season_end":
-        return <div className="feed-text">🔄 Новый сезон начался!</div>;
+        return <div className="feed-text">{t.feed.newSeason}</div>;
       case "new_player": {
         const name = d.name || item.actorName;
         return (
           <div className="feed-text">
             👋{" "}
             <span className="feed-name-link" onClick={() => item.actorId && navigate("player", { playerId: item.actorId, title: name })}>{name}</span>
-            {" присоединился к клубу"}
+            {" "}{t.feed.joined}
           </div>
         );
       }
@@ -193,7 +195,7 @@ function LiveFeed({ navigate }) {
       {achModal && <AchFeedModal code={achModal.code} onClose={() => setAchModal(null)} />}
       <div className="card feed-card">
         <div className="feed-header">
-          <span className="feed-title">🔴 Живая лента клуба</span>
+          <span className="feed-title">{t.feed.title}</span>
         </div>
         {feed.map(item => (
           <div key={item.id} className="feed-item">
@@ -227,7 +229,7 @@ export function Home({ navigate }) {
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
               <RankBadge elo={me.elo} />
-              {me.achPoints > 0 && <span style={{ fontSize: 12, color: "#FFD60A", background: "rgba(255,214,10,.12)", borderRadius: 8, padding: "3px 8px" }}>🏆 {me.achPoints} очк.</span>}
+              {me.achPoints > 0 && <span style={{ fontSize: 12, color: "#FFD60A", background: "rgba(255,214,10,.12)", borderRadius: 8, padding: "3px 8px" }}>🏆 {me.achPoints} {t.pts}</span>}
             </div>
             <RankProgress elo={me.elo} />
             <StreakProgress streak={me.streak} />

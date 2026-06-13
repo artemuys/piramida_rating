@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "../api.js";
 import { useApp } from "../store.jsx";
 import { Ava, Spinner, Empty } from "../components.jsx";
-import { fmtElapsed } from "../util.js";
 import { haptic } from "../telegram.js";
 
 export function Duels({ navigate }) {
@@ -30,21 +29,21 @@ export function Duels({ navigate }) {
 
   if (!data) return <Spinner />;
 
-  const now = Date.now();
   const hasAny = data.incoming.length > 0 || data.outgoing.length > 0;
+  const td = t.duels;
 
   return (
     <>
       {data.incoming.length > 0 && (
         <div className="card">
-          <div className="s-sect" style={{ color: "#FF9F0A" }}>⚔️ Входящие вызовы</div>
+          <div className="s-sect" style={{ color: "#FF9F0A" }}>{td.incoming}</div>
           {data.incoming.map(d => (
             <div key={d.id} className="duel-row">
               <div className="duel-row-top" onClick={() => navigate("player", { playerId: d.challenger.id, title: d.challenger.name })} style={{ cursor: "pointer" }}>
                 <Ava id={d.challenger.id} name={d.challenger.name} />
                 <div className="duel-info">
                   <div className="duel-name">{d.challenger.name}</div>
-                  <div className="duel-meta">{d.challenger.elo} эло</div>
+                  <div className="duel-meta">{d.challenger.elo} {t.elo}</div>
                 </div>
               </div>
               {d.message && <div className="duel-msg">💬 {d.message}</div>}
@@ -54,9 +53,9 @@ export function Duels({ navigate }) {
                   className="btn-tonal red"
                   style={{ flex: 1, padding: "10px", fontSize: 14 }}
                   disabled={busy}
-                  onClick={() => act(`/duels/${d.id}/decline`, "Вызов отклонён")}
+                  onClick={() => act(`/duels/${d.id}/decline`, td.declined)}
                 >
-                  Отклонить
+                  {td.decline}
                 </button>
               </div>
             </div>
@@ -66,7 +65,7 @@ export function Duels({ navigate }) {
 
       {data.outgoing.length > 0 && (
         <div className="card">
-          <div className="s-sect" style={{ color: "#0A84FF" }}>🗡 Мои вызовы</div>
+          <div className="s-sect" style={{ color: "#0A84FF" }}>{td.outgoing}</div>
           {data.outgoing.map(d => (
             <div key={d.id} className="duel-row">
               <div
@@ -77,7 +76,7 @@ export function Duels({ navigate }) {
                 <Ava id={d.opponent.id} name={d.opponent.name} />
                 <div className="duel-info">
                   <div className="duel-name">{d.opponent.name}</div>
-                  <div className="duel-meta">{d.opponent.elo} эло</div>
+                  <div className="duel-meta">{d.opponent.elo} {t.elo}</div>
                 </div>
               </div>
               {d.message && <div className="duel-msg">💬 {d.message}</div>}
@@ -86,9 +85,9 @@ export function Duels({ navigate }) {
                   className="btn-tonal"
                   style={{ flex: 1, padding: "10px", fontSize: 14 }}
                   disabled={busy}
-                  onClick={() => act(`/duels/${d.id}/cancel`, "Вызов отменён")}
+                  onClick={() => act(`/duels/${d.id}/cancel`, td.cancelledToast)}
                 >
-                  Отменить
+                  {td.cancelBtn}
                 </button>
               </div>
             </div>
@@ -97,27 +96,28 @@ export function Duels({ navigate }) {
       )}
 
       {!hasAny && (
-        <Empty icon="⚔️" text="Нет активных дуэлей" hint="Брось вызов из профиля соперника" />
+        <Empty icon="⚔️" text={td.empty} hint={td.emptyHint} />
       )}
     </>
   );
 }
 
 export function DuelModal({ opponent, onClose, onSent }) {
-  const { me, toastError, toast } = useApp();
+  const { me, t, toastError, toast } = useApp();
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const td = t.duels;
 
   const noContact = !me?.contact;
 
   async function send() {
     if (busy) return;
-    if (noContact) { toast("⚠️ Укажи способ связи в настройках", "err"); return; }
+    if (noContact) { toast(td.noContactToast, "err"); return; }
     setBusy(true);
     try {
       await api.post("/duels", { opponentId: opponent.id, message: msg.trim() });
       haptic("ok");
-      toast("⚔️ Вызов отправлен!", "ok");
+      toast(td.sentToast, "ok");
       onSent?.();
       onClose();
     } catch (e) { toastError(e); }
@@ -130,19 +130,19 @@ export function DuelModal({ opponent, onClose, onSent }) {
         <div className="modal-grabber" />
         <div className="modal-header">
           <span className="modal-icon">⚔️</span>
-          <div className="modal-result-lbl" style={{ color: "#FF9F0A" }}>Вызов на дуэль</div>
-          <div className="modal-sub">Бросаешь вызов: <strong>{opponent.name}</strong></div>
+          <div className="modal-result-lbl" style={{ color: "#FF9F0A" }}>{td.modalTitle}</div>
+          <div className="modal-sub">{td.challenging} <strong>{opponent.name}</strong></div>
         </div>
         <div className="modal-body">
           <div className="duel-contact-row">
-            <span className="duel-contact-lbl">📩 Мой способ связи</span>
+            <span className="duel-contact-lbl">{td.myContact}</span>
             <span className="duel-contact-val" style={{ color: noContact ? "#FF453A" : "#0A84FF" }}>
-              {noContact ? "не указан — зайди в настройки" : me.contact}
+              {noContact ? td.noContactVal : me.contact}
             </span>
           </div>
           <textarea
             className="duel-textarea"
-            placeholder="Сообщение сопернику: время, место, условия… (необязательно)"
+            placeholder={td.msgPh}
             maxLength={200}
             value={msg}
             onChange={e => setMsg(e.target.value)}
@@ -150,14 +150,14 @@ export function DuelModal({ opponent, onClose, onSent }) {
             style={{ marginTop: 10 }}
           />
           <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-            <button className="btn-tonal" style={{ flex: 1 }} onClick={onClose}>Отмена</button>
+            <button className="btn-tonal" style={{ flex: 1 }} onClick={onClose}>{td.cancelModal}</button>
             <button
               className="btn-primary"
               style={{ flex: 1, background: noContact ? undefined : "linear-gradient(135deg,#FF9F0A,#FF6B0A)" }}
               disabled={busy || noContact}
               onClick={send}
             >
-              ⚔️ Бросить вызов
+              {td.send}
             </button>
           </div>
         </div>

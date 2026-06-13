@@ -30,8 +30,9 @@ function RecordRow({ icon, label, desc, value, sub, onPress, onPressSecond, seco
 }
 
 export function Records({ navigate }) {
-  const { toastError } = useApp();
+  const { t, toastError } = useApp();
   const [data, setData] = useState(null);
+  const r = t.records_ext;
 
   useEffect(() => {
     api.get("/records").then(setData).catch(toastError);
@@ -47,39 +48,39 @@ export function Records({ navigate }) {
   return (
     <>
       <div className="card">
-        <div className="s-sect" style={{ color: "#FFD60A" }}>⚡ Все времена</div>
+        <div className="s-sect" style={{ color: "#FFD60A" }}>{r.allTime}</div>
         {allTime.bestStreak && (
           <RecordRow
-            icon="🔥" label="Серийный победитель"
-            desc="Самая длинная серия побед подряд за всё время"
-            value={`${allTime.bestStreak.count} подряд`}
+            icon="🔥" label={r.bestStreak.label}
+            desc={r.bestStreak.desc}
+            value={`${allTime.bestStreak.count} ${r.inARow}`}
             sub={allTime.bestStreak.name}
             onPress={() => go(allTime.bestStreak.id, allTime.bestStreak.name)}
           />
         )}
         {allTime.peakElo && (
           <RecordRow
-            icon="👑" label="Исторический пик"
-            desc="Наивысший рейтинг ELO, когда-либо достигнутый игроком"
-            value={`${allTime.peakElo.elo} эло`}
+            icon="👑" label={r.peakElo.label}
+            desc={r.peakElo.desc}
+            value={`${allTime.peakElo.elo} ${t.elo}`}
             sub={allTime.peakElo.name}
             onPress={() => go(allTime.peakElo.id, allTime.peakElo.name)}
           />
         )}
         {allTime.veteran && (
           <RecordRow
-            icon="💼" label="Ветеран клуба"
-            desc="Больше всего сыгранных матчей за всё время"
-            value={`${allTime.veteran.count} матчей`}
+            icon="💼" label={r.veteran.label}
+            desc={r.veteran.desc}
+            value={`${allTime.veteran.count} ${r.matchesWord}`}
             sub={allTime.veteran.name}
             onPress={() => go(allTime.veteran.id, allTime.veteran.name)}
           />
         )}
         {allTime.derby && (
           <RecordRow
-            icon="🤝" label="Вечное дерби"
-            desc="Самое частое противостояние двух игроков в клубе"
-            value={`${allTime.derby.count} матчей`}
+            icon="🤝" label={r.derby.label}
+            desc={r.derby.desc}
+            value={`${allTime.derby.count} ${r.matchesWord}`}
             sub={allTime.derby.playerA.name}
             onPress={() => go(allTime.derby.playerA.id, allTime.derby.playerA.name)}
             secondLabel={allTime.derby.playerB.name}
@@ -88,8 +89,8 @@ export function Records({ navigate }) {
         )}
         {allTime.boss && (
           <RecordRow
-            icon="🦖" label="Непобедимый босс"
-            desc="Лучший процент побед (учитываются игроки от 20 матчей)"
+            icon="🦖" label={r.boss.label}
+            desc={r.boss.desc}
             value={`${allTime.boss.winRate}%`}
             sub={allTime.boss.name}
             onPress={() => go(allTime.boss.id, allTime.boss.name)}
@@ -97,9 +98,9 @@ export function Records({ navigate }) {
         )}
         {allTime.upset && (
           <RecordRow
-            icon="🏹" label="Величайший апсет"
-            desc="Самая большая победа над более сильным соперником по ELO"
-            value={`+${allTime.upset.diff} эло`}
+            icon="🏹" label={r.upset.label}
+            desc={r.upset.desc}
+            value={`+${allTime.upset.diff} ${t.elo}`}
             sub={allTime.upset.winnerName}
             onPress={() => go(allTime.upset.winnerId, allTime.upset.winnerName)}
             secondLabel={allTime.upset.loserName}
@@ -109,70 +110,70 @@ export function Records({ navigate }) {
       </div>
 
       <div className="card">
-        <div className="s-sect" style={{ color: "#FF9F0A" }}>📅 Этот месяц</div>
+        <div className="s-sect" style={{ color: "#FF9F0A" }}>{r.thisMonth}</div>
         {monthly.mostMatches && (
           <RecordRow
-            icon="🎯" label="Самый активный"
-            desc="Больше всего матчей сыграно в этом месяце"
-            value={`${monthly.mostMatches.count} игр`}
+            icon="🎯" label={r.mostMatches.label}
+            desc={r.mostMatches.desc}
+            value={`${monthly.mostMatches.count} ${r.gamesWord}`}
             sub={monthly.mostMatches.name}
             onPress={() => go(monthly.mostMatches.id, monthly.mostMatches.name)}
           />
         )}
         {monthly.topGainer && (
           <RecordRow
-            icon="📈" label="Гроза месяца"
-            desc="Наибольший прирост ELO за текущий месяц"
-            value={`+${monthly.topGainer.gain} эло`}
+            icon="📈" label={r.topGainer.label}
+            desc={r.topGainer.desc}
+            value={`+${monthly.topGainer.gain} ${t.elo}`}
             sub={monthly.topGainer.name}
             onPress={() => go(monthly.topGainer.id, monthly.topGainer.name)}
           />
         )}
         {monthly.topDonor && (
           <RecordRow
-            icon="📉" label="Главный донор"
-            desc="Наибольшая потеря ELO за текущий месяц"
-            value={`${monthly.topDonor.loss} эло`}
+            icon="📉" label={r.topDonor.label}
+            desc={r.topDonor.desc}
+            value={`${monthly.topDonor.loss} ${t.elo}`}
             sub={monthly.topDonor.name}
             onPress={() => go(monthly.topDonor.id, monthly.topDonor.name)}
           />
         )}
         {monthly.topHunter && (
           <RecordRow
-            icon="⚔️" label="Охотник за головами"
-            desc="Сыграл с наибольшим числом разных соперников в этом месяце"
-            value={`${monthly.topHunter.count} соперников`}
+            icon="⚔️" label={r.topHunter.label}
+            desc={r.topHunter.desc}
+            value={`${monthly.topHunter.count} ${r.opponentsWord}`}
             sub={monthly.topHunter.name}
             onPress={() => go(monthly.topHunter.id, monthly.topHunter.name)}
           />
         )}
         {!monthly.mostMatches && !monthly.topGainer && (
-          <div className="hint" style={{ paddingBottom: 12 }}>Матчи в этом месяце ещё не сыграны</div>
+          <div className="hint" style={{ paddingBottom: 12 }}>{r.noMonthly}</div>
         )}
       </div>
 
       <div className="card">
-        <div className="s-sect" style={{ color: "#30D158" }}>🚀 Эта неделя</div>
+        <div className="s-sect" style={{ color: "#30D158" }}>{r.thisWeek}</div>
         {weekly.topGainer && (
           <RecordRow
-            icon="⚡" label="Быстрый рост"
-            desc="Наибольший прирост ELO за текущую неделю"
-            value={`+${weekly.topGainer.gain} эло`}
+            icon="⚡" label={r.fastGrowth.label}
+            desc={r.fastGrowth.desc}
+            value={`+${weekly.topGainer.gain} ${t.elo}`}
             sub={weekly.topGainer.name}
             onPress={() => go(weekly.topGainer.id, weekly.topGainer.name)}
           />
         )}
         {weekly.marathon && (
           <RecordRow
-            icon="🎰" label="Марафон недели"
-            desc="Больше всего матчей сыграно на этой неделе"
-            value={`${weekly.marathon.count} матчей`}
+            icon="🎰" label={r.weekMarathon.label}
+            desc={r.weekMarathon.desc}
+            value={`${weekly.marathon.count} ${r.matchesWord}`}
             sub={weekly.marathon.name}
             onPress={() => go(weekly.marathon.id, weekly.marathon.name)}
           />
         )}
         {!weekly.topGainer && !weekly.marathon && (
-          <div className="hint" style={{ paddingBottom: 12 }}>На этой неделе ещё не сыграно</div>
+          <div className="hint" style={{ paddingBottom: 12 }}>{r.noWeekly}</div>
         )}
       </div>
     </>

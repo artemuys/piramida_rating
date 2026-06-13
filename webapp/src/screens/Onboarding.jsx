@@ -111,7 +111,7 @@ export function Onboarding() {
           />
           <div className="ob-field-hint">
             {name.trim().length > 0 && !nameValid
-              ? "⚠️ Только буквы, без пробелов и спецсимволов, минимум 2 символа"
+              ? t.step0.nameErr ?? "⚠️ Letters only, no spaces or special characters, minimum 2"
               : t.step0.hint}
           </div>
           <button className="ob-btn" disabled={!nameValid} onClick={() => setStep(2)}>{t.step0.next}</button>
@@ -134,7 +134,7 @@ export function Onboarding() {
               >
                 Telegram
               </button>
-              <button className={`tog${contactType === "phone" ? " on" : ""}`} onClick={() => setContactType("phone")}>Телефон</button>
+              <button className={`tog${contactType === "phone" ? " on" : ""}`} onClick={() => setContactType("phone")}>{t.settings_ext.phoneToggle}</button>
             </div>
 
             {contactType === "telegram" && (
@@ -147,7 +147,7 @@ export function Onboarding() {
               <>
                 <input
                   className={`ob-field${phone.trim().length >= 2 && !phoneErr ? " ok" : phoneErr ? " err" : ""}`}
-                  placeholder="+7 (___) ___-__-__"
+                  placeholder={t.settings_ext.phonePh}
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   autoFocus
@@ -155,21 +155,21 @@ export function Onboarding() {
                 />
                 {phoneErr && (
                   <div className="ob-field-hint" style={{ color: "#ff8090" }}>
-                    Неверный формат. Пример: +7 (999) 123-45-67
+                    {t.settings_ext.phoneError}
                   </div>
                 )}
               </>
             )}
 
-            {!hasTgUsername && contactType === "telegram" && (
+            {!hasTgUsername && (
               <div className="ob-field-hint">
-                У вас нет @username в Telegram. Добавьте его в настройках Telegram или выберите телефон.
+                {t.settings_ext.noTgOnboarding}
               </div>
             )}
             <div className="ob-field-hint">
               {contactType === "telegram"
-                ? "Другие игроки смогут написать вам напрямую."
-                : "Виден только активированным игрокам клуба."}
+                ? t.settings_ext.tgHint
+                : t.settings_ext.phoneHint}
             </div>
             <button className="ob-btn" disabled={!contactOk} onClick={() => setStep(3)}>{t.step1.next}</button>
           </>
