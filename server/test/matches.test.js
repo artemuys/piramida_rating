@@ -5,7 +5,12 @@ import { loadServer, req, createUser, checkin, setElo } from "./helpers.js";
 let app, q;
 before(async () => ({ app, q } = await loadServer()));
 
-const getUser = (id) => q(`SELECT * FROM users WHERE id = ?`).get(id);
+// Активная дисциплина — pyramid: матч-математика живёт в *_pyramid колонках.
+// Алиасим их на пул-имена, чтобы ассерты читались как elo/matches_count/wins_count.
+const getUser = (id) => {
+  const u = q(`SELECT * FROM users WHERE id = ?`).get(id);
+  return u && { ...u, elo: u.elo_pyramid, matches_count: u.matches_count_pyramid, wins_count: u.wins_count_pyramid };
+};
 const getMatch = (id) => q(`SELECT * FROM matches WHERE id = ?`).get(id);
 
 /** Пара свежих заигранных (checked-in) игроков. */

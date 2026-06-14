@@ -64,16 +64,18 @@ export default async function requestsRoutes(app) {
   app.get("/requests/feed", (req) => {
     const u = requireActivated(req);
     const t = now();
-    const days = [dayStr(0), dayStr(1), dayStr(2), dayStr(3)];
+    // Окно — 3 заигрываемых дня (dayOffset 1..3 по схеме создания). Сегодня (0)
+    // заявку подать нельзя, поэтому в фид не включаем.
+    const days = [dayStr(1), dayStr(2), dayStr(3)];
     const rows = q(
       `SELECT r.id, r.day, r.time_slot, r.disc, r.pays,
               p.id AS p_id, p.name, p.elo, p.elo_pyramid, p.role, p.contact
        FROM requests r
        JOIN users p ON p.id = r.user_id
-       WHERE r.day IN (?, ?, ?, ?) AND r.user_id != ? AND p.activated_until > ?
+       WHERE r.day IN (?, ?, ?) AND r.user_id != ? AND p.activated_until > ?
        ORDER BY r.day, r.time_slot,
                 CASE WHEN r.disc = 'pyramid' THEN p.elo_pyramid ELSE p.elo END DESC`
-    ).all(days[0], days[1], days[2], days[3], u.id, t);
+    ).all(days[0], days[1], days[2], u.id, t);
     return {
       days,
       feed: rows.map((r) => ({

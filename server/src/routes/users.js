@@ -130,7 +130,7 @@ export default async function usersRoutes(app) {
     const name = clean(req.body.name, 40);
     const contact = clean(req.body.contact, 60);
     if (name.length < 2) throw new ApiError(400, "validation");
-    if (!/^[\p{L}\-]{2,}$/u.test(name)) throw new ApiError(400, "invalid_name");
+    if (!/^\p{L}+(?:[ \-]\p{L}+)*$/u.test(name)) throw new ApiError(400, "invalid_name");
     if (contact.length < 2) throw new ApiError(400, "validation");
     const contactType = req.body.contactType ?? "telegram";
 
@@ -157,7 +157,7 @@ export default async function usersRoutes(app) {
     if (req.body.name !== undefined) {
       if (!u.name_change_allowed) throw new ApiError(403, "not_allowed");
       const newName = clean(req.body.name, 40);
-      if (newName.length < 2 || !/^[\p{L}\-]{2,}$/u.test(newName)) throw new ApiError(400, "invalid_name");
+      if (newName.length < 2 || !/^\p{L}+(?:[ \-]\p{L}+)*$/u.test(newName)) throw new ApiError(400, "invalid_name");
       q(`UPDATE users SET name = ?, name_change_allowed = 0 WHERE id = ?`).run(newName, u.id);
     }
 

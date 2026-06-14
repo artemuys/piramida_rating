@@ -54,6 +54,8 @@ describe("онбординг", () => {
 describe("профиль", () => {
   test("PATCH /me обновляет поля частично", async () => {
     const u = await createUser(app, { name: "Старое Имя" });
+    // Имя залочено по умолчанию (name_change_allowed=0) — разблокируем, как делает админ.
+    q(`UPDATE users SET name_change_allowed = 1 WHERE id = ?`).run(u.me.id);
     const r = await req(app, "PATCH", "/api/me", { tgId: u.tgId, body: { name: "Новое  Имя", prefDisc: 0 } });
     const me = r.json().me;
     assert.equal(me.name, "Новое Имя"); // двойной пробел схлопнут

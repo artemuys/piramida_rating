@@ -27,8 +27,10 @@ export function Onboarding() {
   const [rulesAccepted, setRulesAccepted] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const NAME_RE = /^[\p{L}\-]{2,}$/u;
-  const nameValid = NAME_RE.test(name.trim());
+  // Буквы со словами-разделителями: «Иван Иванов», «Кто-то». Без цифр и спецсимволов.
+  const NAME_RE = /^\p{L}+(?:[ \-]\p{L}+)*$/u;
+  const cleanedName = name.trim().replace(/\s+/g, " ");
+  const nameValid = cleanedName.length >= 2 && NAME_RE.test(cleanedName);
 
   const t = getT(chosen || "ru");
 

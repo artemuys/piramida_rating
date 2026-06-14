@@ -6,16 +6,16 @@ let app, db, q, tx;
 before(async () => ({ app, db, q, tx } = await loadServer()));
 
 describe("схема и seed", () => {
-  test("seed выполняется один раз и содержит 12 игроков", () => {
+  test("свежая БД без хардкод-сида пуста (сид вынесен в миграцию)", () => {
+    // Сид-пользователи удалены из db.js (commit 7425b07) — БД стартует пустой.
     const c = q(`SELECT COUNT(*) AS c FROM users`).get().c;
-    assert.ok(c >= 12);
-    // повторный прогон seed не дублирует (INSERT OR IGNORE по tg_id)
-    assert.equal(q(`SELECT COUNT(*) AS c FROM users WHERE tg_id = 607848091`).get().c, 1);
+    assert.equal(c, 0);
   });
 
-  test("публичные ID начинаются с 1000", () => {
-    const min = q(`SELECT MIN(id) AS m FROM users`).get().m;
-    assert.ok(min >= 1000, `минимальный id = ${min}`);
+  test("публичные ID начинаются с 1000", async () => {
+    // sqlite_sequence инициализируется значением 999 → первый автоинкремент = 1000.
+    const r = q(`INSERT INTO users (tg_id, name, created_at) VALUES (?, ?, ?)`).run(700_000_001, "Первый", Date.now());
+    assert.ok(Number(r.lastInsertRowid) >= 1000, `id = ${r.lastInsertRowid}`);
   });
 
   test("дефолт эло в схеме совпадает с ELO_START", async () => {

@@ -41,19 +41,29 @@ export function req(app, method, url, { tgId, body } = {}) {
 let tgSeq = 900_000_000; // не пересекается с seed-пользователями
 export const freshTgId = () => ++tgSeq;
 
+/** Уникальное имя из одних букв (имена не принимают цифры): 900000001 → "...beb". */
+function nameFromId(n) {
+  let s = "";
+  for (let x = n; x > 0; x = Math.floor(x / 26)) s = String.fromCharCode(97 + (x % 26)) + s;
+  return `Player ${s || "a"}`;
+}
+
 /** Онбордит нового пользователя, возвращает { tgId, me }. */
 export async function createUser(app, overrides = {}) {
   const tgId = overrides.tgId ?? freshTgId();
   const res = await req(app, "POST", "/api/auth/onboard", {
     tgId,
-    body: { name: overrides.name ?? `Player ${tgId}`, contact: overrides.contact ?? "@test", lang: overrides.lang ?? "ru" },
+    body: { name: overrides.name ?? nameFromId(tgId), contact: overrides.contact ?? "@test", lang: overrides.lang ?? "ru" },
   });
   if (res.statusCode !== 200) throw new Error(`onboard failed: ${res.statusCode} ${res.body}`);
   return { tgId, me: res.json().me };
 }
 
 /** Прямые манипуляции состоянием (то, что в проде делает админ/время). */
-export const setElo = (q, userId, elo) => q(`UPDATE users SET elo = ? WHERE id = ?`).run(elo, userId);
+// Активная дисциплина — pyramid, матчи считаются по elo_pyramid; пишем в обе
+// колонки, чтобы тесты не зависели от того, какую читает конкретный код.
+export const setElo = (q, userId, elo) =>
+  q(`UPDATE users SET elo = ?, elo_pyramid = ? WHERE id = ?`).run(elo, elo, userId);
 export const checkin = (q, userId, ms = 6 * 3600 * 1000) =>
   q(`UPDATE users SET checked_in_until = ?, activated_until = ? WHERE id = ?`)
     .run(Date.now() + ms, Date.now() + ms, userId);
