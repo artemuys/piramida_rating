@@ -6,6 +6,12 @@ import { haptic } from "./telegram.js";
 const Ctx = createContext(null);
 export const useApp = () => useContext(Ctx);
 
+// Массив тостов меняется часто (на каждый тост + по таймерам исчезновения).
+// Держим его в отдельном контексте, чтобы эти изменения не ре-рендерили всех
+// потребителей `me`/`phase` — только сам рендерер <Toasts>.
+const ToastsCtx = createContext([]);
+export const useToasts = () => useContext(ToastsCtx);
+
 let toastSeq = 0;
 
 export function AppProvider({ children }) {
@@ -74,9 +80,13 @@ export function AppProvider({ children }) {
   const updateMe = useCallback((partial) => setMe((prev) => prev ? { ...prev, ...partial } : prev), []);
 
   const value = useMemo(
-    () => ({ me, setMe, updateMe, phase, setPhase, refreshMe, lang, obLang, setObLang, t, toasts, toast, toastError, matchPoke, pokeMatches }),
-    [me, updateMe, phase, refreshMe, lang, obLang, t, toasts, toast, toastError, matchPoke, pokeMatches]
+    () => ({ me, setMe, updateMe, phase, setPhase, refreshMe, lang, obLang, setObLang, t, toast, toastError, matchPoke, pokeMatches }),
+    [me, updateMe, phase, refreshMe, lang, obLang, t, toast, toastError, matchPoke, pokeMatches]
   );
 
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={value}>
+      <ToastsCtx.Provider value={toasts}>{children}</ToastsCtx.Provider>
+    </Ctx.Provider>
+  );
 }

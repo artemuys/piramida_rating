@@ -170,6 +170,13 @@ for (const col of [
 // (там накоплены реальные рейтинги). Идемпотентно, данные пула не трогаем.
 try { db.exec(`UPDATE users SET active_discipline = 'pyramid' WHERE active_discipline != 'pyramid'`); } catch { /* колонки ещё нет */ }
 
+// Индекс под фактически используемую дисциплину (все игроки — в пирамиде).
+// Покрывает ORDER BY рейтинга и COUNT(*) для расчёта места без полного скана.
+// Создаётся ПОСЛЕ ALTER TABLE выше — на свежей БД колонки elo_pyramid ещё нет в CREATE.
+try {
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_users_elo_pyr ON users(elo_pyramid DESC, matches_count_pyramid DESC)`);
+} catch { /* колонок ещё нет — миграция не отработала */ }
+
 // ── Миграции matches: дисциплина матча ─────────────────────────────────────
 for (const col of [
   `ALTER TABLE matches ADD COLUMN discipline TEXT NOT NULL DEFAULT 'pool'`,

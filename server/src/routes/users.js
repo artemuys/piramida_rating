@@ -13,6 +13,31 @@ const ACH_PTS = {
   veteran_1000:100,bad_day:5,main_donor:5,tried:5,phoenix:15,
 };
 
+// ── Кэш «мест» ───────────────────────────────────────────────
+// place(elo) пересчитывался полным сканом users на КАЖДЫЙ /me (поллится каждые 30 с
+// + на focus/visibility). Вместо этого держим отсортированный по убыванию снимок Эло
+// (обновляется раз в 5 с, один скан на всех) и ищем место бинарным поиском — O(log N),
+// без обращения к БД на горячем пути.
+const placeCache = { pool: { at: 0, elos: [] }, pyramid: { at: 0, elos: [] } };
+function placeOf(disc, elo) {
+  const key = disc === "pyramid" ? "pyramid" : "pool";
+  const eloCol = key === "pyramid" ? "elo_pyramid" : "elo";
+  const c = placeCache[key];
+  const t = now();
+  if (t - c.at > 5000) {
+    c.elos = q(`SELECT ${eloCol} AS e FROM users ORDER BY ${eloCol} DESC`).all().map((r) => r.e);
+    c.at = t;
+  }
+  // Число игроков с Эло строго больше → индекс первого элемента <= elo (место = он + 1).
+  let lo = 0, hi = c.elos.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (c.elos[mid] > elo) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo + 1;
+}
+
 function serializeMe(u) {
   const t = now();
   const disc = u.active_discipline ?? 'pool';
@@ -27,8 +52,7 @@ function serializeMe(u) {
   const bestStreak  = isPyramid ? (u.best_streak_pyramid  ?? 0)    : (u.best_streak ?? 0);
   const peakElo     = isPyramid ? (u.peak_elo_pyramid     ?? 1000) : (u.peak_elo ?? u.elo);
 
-  const eloCol = isPyramid ? 'elo_pyramid' : 'elo';
-  const place = q(`SELECT COUNT(*) + 1 AS p FROM users WHERE ${eloCol} > ?`).get(elo).p;
+  const place = placeOf(disc, elo);
   const favoritesCount = q(`SELECT COUNT(*) AS c FROM favorites WHERE user_id = ?`).get(u.id).c;
 
   // Непросмотренные ачивки текущей дисциплины
@@ -192,7 +216,7 @@ export default async function usersRoutes(app) {
       };
     }
     const userElo = isPyramid ? (u.elo_pyramid ?? 1000) : u.elo;
-    const place = q(`SELECT COUNT(*) + 1 AS p FROM users WHERE ${eloCol} > ?`).get(userElo).p;
+    const place = placeOf(disc, userElo);
     const season = q(`SELECT * FROM seasons WHERE closed = 0 OR closed IS NULL ORDER BY id DESC LIMIT 1`).get();
     return {
       top: ratingCache[disc].data.map((r) => ({
@@ -214,7 +238,6 @@ export default async function usersRoutes(app) {
     const t = now();
     const disc = u.active_discipline ?? 'pool';
     const isPyramid = disc === 'pyramid';
-    const eloCol = isPyramid ? 'elo_pyramid' : 'elo';
     const isFavorite = !!q(`SELECT 1 FROM favorites WHERE user_id = ? AND fav_id = ?`).get(u.id, id);
     const h2h = q(
       `SELECT * FROM matches
@@ -243,7 +266,7 @@ export default async function usersRoutes(app) {
 
     // Место в рейтинге
     const pElo = isPyramid ? (p.elo_pyramid ?? 1000) : p.elo;
-    const place = q(`SELECT COUNT(*) + 1 AS p FROM users WHERE ${eloCol} > ?`).get(pElo).p;
+    const place = placeOf(disc, pElo);
 
     const rank = rankOf(pElo);
     const xp = isPyramid ? (p.xp_pyramid ?? 0) : (p.xp ?? 0);

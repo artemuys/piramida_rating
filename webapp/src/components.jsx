@@ -1,7 +1,7 @@
 import { Component, useEffect, useRef, useState } from "react";
 import { getT } from "./i18n.js";
 import confetti from "canvas-confetti";
-import { useApp } from "./store.jsx";
+import { useApp, useToasts } from "./store.jsx";
 import { avaColor, initials, winPct, rankOf, RANKS, xpProgress, levelFromXp, xpToReachLevel } from "./util.js";
 import { tg } from "./telegram.js";
 
@@ -244,7 +244,7 @@ export function Empty({ icon, text, hint }) {
 }
 
 export function Toasts() {
-  const { toasts } = useApp();
+  const toasts = useToasts();
   if (!toasts.length) return null;
   return (
     <div className="toast-wrap">

@@ -7,12 +7,14 @@ import { render, screen, act, waitFor } from "@testing-library/react";
 vi.mock("../../src/api.js", () => ({ api: { get: vi.fn() } }));
 vi.mock("../../src/telegram.js", () => ({ haptic: vi.fn() }));
 
-import { AppProvider, useApp } from "../../src/store.jsx";
+import { AppProvider, useApp, useToasts } from "../../src/store.jsx";
 import { api } from "../../src/api.js";
 
 let hook;
+let toasts; // массив тостов теперь в отдельном контексте useToasts
 function Probe() {
   hook = useApp();
+  toasts = useToasts();
   return <div data-testid="phase">{hook.phase}</div>;
 }
 const renderApp = () => render(<AppProvider><Probe /></AppProvider>);
@@ -68,8 +70,8 @@ describe("toast", () => {
     renderApp();
     await waitFor(() => expect(phase()).toBe("ready"));
     act(() => hook.toast("Привет", "ok"));
-    await waitFor(() => expect(hook.toasts.at(-1)?.msg).toBe("Привет"));
-    expect(hook.toasts.at(-1).kind).toBe("ok");
+    await waitFor(() => expect(toasts.at(-1)?.msg).toBe("Привет"));
+    expect(toasts.at(-1).kind).toBe("ok");
   });
 
   test("очередь не растёт без предела (хвост ≤ 3)", async () => {
@@ -77,7 +79,7 @@ describe("toast", () => {
     renderApp();
     await waitFor(() => expect(phase()).toBe("ready"));
     act(() => { for (let i = 0; i < 6; i++) hook.toast(`m${i}`); });
-    await waitFor(() => expect(hook.toasts.length).toBeLessThanOrEqual(3));
+    await waitFor(() => expect(toasts.length).toBeLessThanOrEqual(3));
   });
 
   test("toastError маппит код ошибки в локализованный текст", async () => {
@@ -85,8 +87,8 @@ describe("toast", () => {
     renderApp();
     await waitFor(() => expect(phase()).toBe("ready"));
     act(() => hook.toastError({ code: "network" }));
-    await waitFor(() => expect(hook.toasts.at(-1)?.kind).toBe("err"));
-    expect(hook.toasts.at(-1).msg.length).toBeGreaterThan(0);
+    await waitFor(() => expect(toasts.at(-1)?.kind).toBe("err"));
+    expect(toasts.at(-1).msg.length).toBeGreaterThan(0);
   });
 });
 
