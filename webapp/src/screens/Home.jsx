@@ -376,18 +376,23 @@ export function Home({ navigate }) {
           onClick={() => navigate("achievements")}
         />
         <NavRow icon="🥇" iconBg="rgba(255,159,10,.12)" label={t.nav.records} onClick={() => navigate("records")} />
-        <NavRow icon="⚙️" iconBg="rgba(99,99,102,.3)" label={t.nav.settings} onClick={() => navigate("settings")} />
-        {me.role === "admin" && (
-          <NavRow icon="🛡" iconBg="rgba(255,159,10,.15)" label={t.x.adminPanel.replace("🛡 ", "")} onClick={() => navigate("admin")} />
-        )}
-        {me.isSuper && (
-          <NavRow icon="⚡" iconBg="rgba(255,214,10,.2)" label={t.nav.superadmin} onClick={() => navigate("superadmin")} />
-        )}
       </div>
 
       <div className="card">
+        <NavRow icon="⚙️" iconBg="rgba(99,99,102,.3)" label={t.nav.settings} onClick={() => navigate("settings")} />
         <NavRow icon="📖" iconBg="rgba(255,255,255,.08)" label={t.x.rulesBtn} onClick={() => setRules(true)} />
       </div>
+
+      {(me.role === "admin" || me.isSuper) && (
+        <div className="card">
+          {me.role === "admin" && (
+            <NavRow icon="🛡" iconBg="rgba(255,159,10,.15)" label={t.x.adminPanel.replace("🛡 ", "")} onClick={() => navigate("admin")} />
+          )}
+          {me.isSuper && (
+            <NavRow icon="⚡" iconBg="rgba(255,214,10,.2)" label={t.nav.superadmin} onClick={() => navigate("superadmin")} />
+          )}
+        </div>
+      )}
 
       <LiveFeed navigate={navigate} />
     </>
