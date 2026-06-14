@@ -50,7 +50,8 @@ CREATE TABLE IF NOT EXISTS requests (
   pays       INTEGER NOT NULL CHECK (pays IN (0,1)),
   created_at INTEGER NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_requests_end ON requests(end_day);
+-- Индекс idx_requests_end создаётся ПОСЛЕ миграции requests (на старой БД
+-- колонки end_day ещё нет — иначе этот блок упадёт на импорте).
 
 CREATE TABLE IF NOT EXISTS matches (
   id                   INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -225,6 +226,10 @@ try {
     `);
   }
 } catch { /* свежая БД уже в новой схеме */ }
+
+// Индекс по end_day — после миграции, когда колонка гарантированно существует
+// (как для свежей БД с новой схемой, так и для мигрированной со старой).
+try { db.exec(`CREATE INDEX IF NOT EXISTS idx_requests_end ON requests(end_day)`); } catch { /* noop */ }
 
 // Публичные ID игроков начинаются с 1000 (4 цифры — удобно диктовать у стола)
 try {
