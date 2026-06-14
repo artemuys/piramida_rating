@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { useApp } from "../store.jsx";
-import { Ava, Crown, Spinner, Empty } from "../components.jsx";
+import { Ava, Crown, Spinner, Empty, ContactLink } from "../components.jsx";
 import { fmtDateTime, fmtDate } from "../util.js";
 import { haptic, tgConfirm } from "../telegram.js";
 
@@ -132,7 +132,7 @@ export function AdminPlayer({ params }) {
                 : <span className="badge badge-red">{t.admin.statusBlocked}</span>}
             </div>
             <div style={{ fontSize: 14, color: "rgba(255,255,255,.55)" }}>
-              {t.idLabel} {u.id} · {u.elo} {t.elo} · <span className="tg">{u.contact || t.noContact}</span>
+              {t.idLabel} {u.id} · {u.elo} {t.elo} · {u.contact ? <ContactLink contact={u.contact} /> : t.noContact}
             </div>
           </div>
         </div>

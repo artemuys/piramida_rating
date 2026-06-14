@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api.js";
 import { useApp } from "../store.jsx";
-import { Ava, Spinner, Empty } from "../components.jsx";
+import { Ava, Spinner, Empty, ContactLink } from "../components.jsx";
 import { haptic } from "../telegram.js";
 
 export function Duels({ navigate }) {
@@ -47,7 +47,7 @@ export function Duels({ navigate }) {
                 </div>
               </div>
               {d.message && <div className="duel-msg">💬 {d.message}</div>}
-              {d.challenger.contact && <div className="duel-contact">📩 {d.challenger.contact}</div>}
+              {d.challenger.contact && <div className="duel-contact">📩 <ContactLink contact={d.challenger.contact} /></div>}
               <div className="duel-actions">
                 <button
                   className="btn-tonal red"

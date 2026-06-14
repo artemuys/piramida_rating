@@ -3,6 +3,38 @@ import { getT } from "./i18n.js";
 import confetti from "canvas-confetti";
 import { useApp } from "./store.jsx";
 import { avaColor, initials, winPct, rankOf, RANKS, xpProgress, levelFromXp, xpToReachLevel } from "./util.js";
+import { tg } from "./telegram.js";
+
+// Renders a contact as a clickable link (Telegram) or copyable phone number.
+export function ContactLink({ contact, style, className }) {
+  if (!contact) return null;
+  const isTg = contact.startsWith("@");
+  const href = isTg ? `https://t.me/${contact.slice(1)}` : `tel:${contact}`;
+
+  function handleClick(e) {
+    e.stopPropagation();
+    if (isTg && tg?.openTelegramLink) {
+      e.preventDefault();
+      try { tg.openTelegramLink(`https://t.me/${contact.slice(1)}`); } catch { window.open(href, "_blank"); }
+    } else if (!isTg && tg?.openLink) {
+      e.preventDefault();
+      try { tg.openLink(href); } catch { window.open(href, "_blank"); }
+    }
+  }
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={handleClick}
+      className={className}
+      style={{ color: "#0A84FF", textDecoration: "none", userSelect: "text", WebkitUserSelect: "text", ...style }}
+    >
+      {contact}
+    </a>
+  );
+}
 
 export function Ava({ id, name, size = 38, ringColor }) {
   const color = avaColor(id);
