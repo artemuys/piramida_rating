@@ -60,9 +60,10 @@ describe("i18n", () => {
     }
   });
 
-  test("getT отдаёт словарь языка, для неизвестного — ru", () => {
-    assert.equal(getT("en"), T.en);
-    assert.equal(getT("xx"), T.ru);
-    assert.equal(getT(undefined), T.ru);
+  test("getT отдаёт словарь языка с пометкой _lang, для неизвестного — ru", () => {
+    // getT возвращает поверхностную копию словаря + поле _lang (не тот же объект).
+    assert.deepEqual(getT("en"), { ...T.en, _lang: "en" });
+    assert.deepEqual(getT("xx"), { ...T.ru, _lang: "xx" }); // контент — ru, но метка сохраняет запрошенный код
+    assert.deepEqual(getT(undefined), { ...T.ru, _lang: "ru" });
   });
 });
