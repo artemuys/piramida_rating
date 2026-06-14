@@ -151,7 +151,8 @@ for (const col of [
   `ALTER TABLE users ADD COLUMN contact_type TEXT NOT NULL DEFAULT 'telegram'`,
   `ALTER TABLE users ADD COLUMN name_change_allowed INTEGER NOT NULL DEFAULT 0`,
   // Дисциплина и статистика пирамиды (пул = существующие колонки)
-  `ALTER TABLE users ADD COLUMN active_discipline TEXT NOT NULL DEFAULT 'pool'`,
+  // Разделение убрано — все играют в пирамиде; колонки пула остаются нетронутыми.
+  `ALTER TABLE users ADD COLUMN active_discipline TEXT NOT NULL DEFAULT 'pyramid'`,
   `ALTER TABLE users ADD COLUMN elo_pyramid INTEGER NOT NULL DEFAULT 1000`,
   `ALTER TABLE users ADD COLUMN matches_count_pyramid INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE users ADD COLUMN wins_count_pyramid INTEGER NOT NULL DEFAULT 0`,
@@ -162,6 +163,10 @@ for (const col of [
 ]) {
   try { db.exec(col); } catch { /* колонка уже есть */ }
 }
+
+// Разделение дисциплин убрано: все существующие игроки переводятся в пирамиду
+// (там накоплены реальные рейтинги). Идемпотентно, данные пула не трогаем.
+try { db.exec(`UPDATE users SET active_discipline = 'pyramid' WHERE active_discipline != 'pyramid'`); } catch { /* колонки ещё нет */ }
 
 // ── Миграции matches: дисциплина матча ─────────────────────────────────────
 for (const col of [

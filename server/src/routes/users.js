@@ -140,7 +140,7 @@ export default async function usersRoutes(app) {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       req.tgUser.id, role, name, contact, contactType, req.body.lang,
-      req.body.prefDisc ?? 2, req.body.prefPays ?? 0, req.body.activeDiscipline ?? 'pool', config.ELO_START, now()
+      req.body.prefDisc ?? 2, req.body.prefPays ?? 0, 'pyramid', config.ELO_START, now()
     );
     const me = q(`SELECT * FROM users WHERE id = ?`).get(Number(r.lastInsertRowid));
     return { me: serializeMe(me) };
@@ -167,7 +167,7 @@ export default async function usersRoutes(app) {
       req.body.lang ?? u.lang,
       req.body.prefDisc ?? u.pref_disc,
       req.body.prefPays ?? u.pref_pays,
-      req.body.activeDiscipline ?? u.active_discipline ?? 'pool',
+      'pyramid',
       u.id
     );
     return { me: serializeMe(q(`SELECT * FROM users WHERE id = ?`).get(u.id)) };

@@ -142,13 +142,7 @@ function Shell() {
           ? <button className="back-btn" onClick={goBack}><span className="back-arrow">‹</span>{t.back}</button>
           : <div style={{ width: 64 }} />}
         <div className="topbar-title">{title}</div>
-        <div style={{ width: 64, display: "flex", justifyContent: "flex-end", alignItems: "center", paddingRight: 8 }}>
-          {me && (
-            <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,.45)", letterSpacing: 0.3 }}>
-              {me.activeDiscipline === 'pyramid' ? '🔺 Пирамида' : '🎱 Пул'}
-            </span>
-          )}
-        </div>
+        <div style={{ width: 64 }} />
       </div>
       <div className={`page page-${dirRef.current}`} key={`${current.id}-${current.params.playerId ?? ""}`}>
         <Comp navigate={navigate} params={current.params} />

@@ -32,7 +32,6 @@ export function Settings() {
   const [disc, setDisc] = useState(me.prefDisc);
   const [pays, setPays] = useState(me.prefPays);
   const [lang, setLang] = useState(me.lang);
-  const [activeDiscipline, setActiveDiscipline] = useState(me.activeDiscipline ?? 'pool');
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [newName, setNewName] = useState("");
@@ -58,7 +57,6 @@ export function Settings() {
         lang,
         prefDisc: disc,
         prefPays: pays,
-        activeDiscipline,
       });
       localStorage.setItem("lang", lang);
       await refreshMe();
@@ -178,16 +176,14 @@ export function Settings() {
 
       <div className="card">
         <div className="s-sect">{t.settings.searchDefaults}</div>
-        {activeDiscipline !== 'pool' && (
-          <div className="tog-wrap">
-            <div className="tog-lbl">{t.search.discipline}</div>
-            <div className="tog-g">
-              {t.discOpts.map((d, i) => (
-                <button key={i} className={`tog${disc === i ? " on" : ""}`} onClick={() => setDisc(i)}>{d}</button>
-              ))}
-            </div>
+        <div className="tog-wrap">
+          <div className="tog-lbl">{t.search.discipline}</div>
+          <div className="tog-g">
+            {t.discOpts.map((d, i) => (
+              <button key={i} className={`tog${disc === i ? " on" : ""}`} onClick={() => setDisc(i)}>{d}</button>
+            ))}
           </div>
-        )}
+        </div>
         <div className="tog-wrap">
           <div className="tog-lbl">{t.search.whoPays}</div>
           <div className="tog-g">
@@ -196,27 +192,6 @@ export function Settings() {
             ))}
           </div>
         </div>
-      </div>
-
-      <div className="card">
-        <div className="s-sect">{t.disc_switch.label}</div>
-        <div className="tog-wrap">
-          <div className="tog-g" style={{ width: "100%" }}>
-            <button
-              className={`tog${activeDiscipline === 'pool' ? " on" : ""}`}
-              onClick={() => setActiveDiscipline('pool')}
-            >
-              🎱 {t.disc_switch.pool}
-            </button>
-            <button
-              className={`tog${activeDiscipline === 'pyramid' ? " on" : ""}`}
-              onClick={() => setActiveDiscipline('pyramid')}
-            >
-              🔺 {t.disc_switch.pyramid}
-            </button>
-          </div>
-        </div>
-        <div className="s-hint">{t.disc_switch.hint}</div>
       </div>
 
       <div className="card">
