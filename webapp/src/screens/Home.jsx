@@ -291,7 +291,7 @@ export function Home({ navigate }) {
         <div className={`ptr-indicator${ptr.refreshing ? " active" : ""}`}
           style={{ opacity: ptr.refreshing ? 1 : ptr.progress }}>
           {ptr.refreshing
-            ? <><div className="ptr-spinner" />Обновление...</>
+            ? <><div className="ptr-spinner" />{t.x.refreshing}</>
             : <span style={{ transform: `rotate(${ptr.progress * 180}deg)`, display: "inline-block" }}>↓</span>}
         </div>
       </div>

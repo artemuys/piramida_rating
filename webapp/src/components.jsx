@@ -18,7 +18,7 @@ export function RevealContact({ contact, t, style }) {
           fontFamily: "inherit", whiteSpace: "nowrap", flexShrink: 0, ...style,
         }}
       >
-        {t?.showContact ?? "Показать"}
+        {t?.showContact ?? "Contact"}
       </button>
     );
   }
@@ -365,7 +365,7 @@ export function MatchResultModal({ match, xpBefore, onClose }) {
           {subs[type] && <div className="modal-sub">{subs[type]}</div>}
           {newStreak >= 3 && (
             <div style={{ marginTop: 8 }}>
-              <span className="streak-badge streak-win">🔥 Серия {newStreak}!</span>
+              <span className="streak-badge streak-win">{t.streak.winFull(newStreak)}</span>
             </div>
           )}
         </div>

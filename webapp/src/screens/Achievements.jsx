@@ -46,10 +46,10 @@ export function getAchMeta(code, t, extra = {}) {
 
   if (/^season_master_(\d+)$/.test(baseCode)) {
     const seasonId = baseCode.match(/\d+$/)[0];
-    let label = meta ? `${meta.season_master?.label ?? "Season Master"} #${seasonId}` : `Хозяин сезона #${seasonId}`;
+    let label = meta ? `${meta.season_master?.label ?? "Season Master"} #${seasonId}` : `Season Master #${seasonId}`;
     let desc = meta
       ? `${meta.season_master?.desc ?? "Top 3"} #${seasonId}`
-      : `Топ-3 по итогам сезона #${seasonId}`;
+      : `Top 3 #${seasonId}`;
     if (extra.seasonStartedAt && extra.seasonEndsAt) {
       const locale = t ? (LOCALES[t._lang] ?? "ru-RU") : "ru-RU";
       const fmt = (ts) => new Date(ts).toLocaleDateString(locale, { day: "numeric", month: "short", year: "2-digit" });
