@@ -635,6 +635,56 @@ body {
 .search-stop-btn:active { opacity: .72; background: rgba(255,61,84,.14); }
 .search-timer { margin-left: auto; font-variant-numeric: tabular-nums; font-size: 14px; }
 
+/* ── SEARCH INLINE (always-expanded) ─────────────────────── */
+.search-inline {
+  background: rgba(255,255,255,.025);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 14px 16px;
+}
+.search-inline.disabled { opacity: .38; pointer-events: none; }
+.search-inline.searching {
+  background: rgba(0,204,124,.06);
+  border-color: rgba(0,204,124,.22);
+}
+.search-inline-status {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 15px; font-weight: 600; color: var(--green);
+  margin-bottom: 12px;
+}
+.search-pulse-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--green); flex-shrink: 0;
+  animation: pulse-ring 2.4s ease-out infinite;
+  box-shadow: 0 0 0 0 rgba(0,204,124,.5);
+}
+
+/* ── PLAY GRID (2×2 tiles) ───────────────────────────────── */
+.play-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.play-tile {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; padding: 14px 8px;
+  background: rgba(255,255,255,.04); border: 1px solid var(--border);
+  border-radius: var(--radius-md); cursor: pointer;
+  font-family: inherit; color: var(--text);
+  transition: background var(--t-fast), transform var(--t-fast);
+  position: relative;
+}
+.play-tile:active { background: rgba(255,255,255,.09); transform: scale(.96); }
+.play-tile.highlight { background: var(--gold-tint); border-color: rgba(255,186,8,.22); }
+.play-tile-icon { font-size: 22px; line-height: 1; }
+.play-tile-lbl { font-size: 12px; color: var(--text-2); font-weight: 500; text-align: center; letter-spacing: -.01em; }
+.play-tile-badge {
+  position: absolute; top: 6px; right: 8px;
+  background: var(--red); color: #fff;
+  font-size: 10px; font-weight: 700;
+  border-radius: 8px; padding: 1px 5px; min-width: 16px; text-align: center;
+}
+
 /* ── MODALS ───────────────────────────────────────────────── */
 .modal-overlay {
   position: fixed; inset: 0;

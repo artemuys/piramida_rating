@@ -177,7 +177,7 @@ export const T = {
     },
     x: {
       adminPanel: "🛡 Admin Panel",
-      rulesBtn: "App rules",
+      rulesBtn: "App rules", findGame: "Find a game", findPlayer: "Find player",
       rulesTitle: "Rules",
       rules: "• Your account is activated by a club admin for 45 days. Without activation, search and requests are unavailable.\n• A check-in by an admin lasts 6 hours and lets you submit match results. Check-in also refreshes your activation for 45 days.\n• Both players confirm a result: your opponent has 30 seconds to confirm the mirrored result from their phone.\n• If the results don't match or time runs out, the match is annulled and no rating changes.\n• Rating uses the Elo system. Newcomers start at 1000.\n• Game requests are created for the next 3 days and are visible, with your contact, to all activated players.\n• Respect your opponents. Rating abuse and disputes can lead to deactivation.",
       lastMatch: "Last match",
@@ -410,7 +410,7 @@ export const T = {
     },
     x: {
       adminPanel: "🛡 Panel administratora",
-      rulesBtn: "Zasady aplikacji",
+      rulesBtn: "Zasady aplikacji", findGame: "Znajdź grę", findPlayer: "Znajdź gracza",
       rulesTitle: "Zasady",
       rules: "• Konto aktywuje administrator klubu na 45 dni. Bez aktywacji wyszukiwanie i ogłoszenia są niedostępne.\n• Check-in u administratora działa 6 godzin i pozwala zgłaszać wyniki meczy. Check-in odnawia też aktywację na 45 dni.\n• Wynik potwierdzają obaj gracze: przeciwnik ma 30 sekund na potwierdzenie lustrzanego wyniku ze swojego telefonu.\n• Jeśli wyniki się nie zgadzają lub czas minął — mecz jest anulowany, ranking bez zmian.\n• Ranking liczony jest systemem Elo. Nowy gracz zaczyna od 1000.\n• Ogłoszenia tworzy się na najbliższe 3 dni; widzą je, wraz z twoim kontaktem, wszyscy aktywowani gracze.\n• Szanuj przeciwników. Za manipulacje rankingiem i spory administrator może dezaktywować konto.",
       lastMatch: "Ostatni mecz",
@@ -647,7 +647,7 @@ export const T = {
     },
     x: {
       adminPanel: "🛡 Панель адміністратора",
-      rulesBtn: "Правила застосунку",
+      rulesBtn: "Правила застосунку", findGame: "Знайти гру", findPlayer: "Знайти гравця",
       rulesTitle: "Правила",
       rules: "• Акаунт активує адміністратор клубу на 45 днів. Без активації пошук і заявки недоступні.\n• Чекін у адміністратора діє 6 годин і дає право вносити результати матчів. Чекін також продовжує активацію на 45 днів.\n• Результат підтверджують обидва гравці: у суперника є 30 секунд, щоб підтвердити дзеркальний результат зі свого телефону.\n• Якщо результати не збіглися або час вийшов — матч анулюється, рейтинг не змінюється.\n• Рейтинг рахується за системою Ело. Новачок починає з 1000.\n• Заявки створюються на найближчі 3 дні та видимі, разом із твоїм контактом, усім активованим гравцям.\n• Поважай суперників. За накрутку рейтингу та спори адміністратор може деактивувати акаунт.",
       lastMatch: "Останній матч",
@@ -884,7 +884,7 @@ export const T = {
     },
     x: {
       adminPanel: "🛡 Панель Администратора",
-      rulesBtn: "Правила приложения",
+      rulesBtn: "Правила приложения", findGame: "Найти игру", findPlayer: "Найти игрока",
       rulesTitle: "Правила",
       rules: "• Аккаунт активирует администратор клуба на 45 дней. Без активации недоступны поиск и заявки.\n• Чекин у администратора действует 6 часов и даёт право вносить результаты матчей. Чекин также продлевает активацию на 45 дней.\n• Результат подтверждают оба игрока: у соперника есть 30 секунд, чтобы подтвердить зеркальный результат со своего телефона.\n• Если результаты не совпали или время вышло — матч аннулируется, рейтинг не меняется.\n• Рейтинг считается по системе Эло. Новичок начинает с 1000.\n• Заявки создаются на ближайшие 3 дня и видны, вместе с твоим контактом, всем активированным игрокам.\n• Уважай соперников. За накрутку рейтинга и споры администратор может деактивировать аккаунт.",
       lastMatch: "Последний матч",

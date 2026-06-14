@@ -25,9 +25,7 @@ function NavRow({ icon, iconBg, label, value, onClick, locked, badge }) {
 
 function SearchBlock() {
   const { me, t, refreshMe, toastError } = useApp();
-  const [open, setOpen] = useState(false);
   const isPool = me.activeDiscipline !== 'pyramid';
-  // В пуле дисциплина фиксирована (всегда American=1), в пирамиде — выбор как раньше
   const [disc, setDisc] = useState(isPool ? 1 : (me.searching?.disc ?? me.prefDisc));
   const [pays, setPays] = useState(me.searching?.pays ?? me.prefPays);
   const [busy, setBusy] = useState(false);
@@ -42,7 +40,6 @@ function SearchBlock() {
     try {
       await api.post("/search/start", { disc, pays });
       haptic("ok");
-      setOpen(false);
       await refreshMe();
     } catch (e) { toastError(e); } finally { setBusy(false); }
   }
@@ -52,60 +49,45 @@ function SearchBlock() {
     setBusy(true);
     try {
       await api.post("/search/stop");
-      setOpen(false);
       await refreshMe();
     } catch (e) { toastError(e); } finally { setBusy(false); }
   }
 
+  if (searching) {
+    return (
+      <div className="search-inline searching">
+        <div className="search-inline-status">
+          <span className="search-pulse-dot" />
+          <span>{t.search.inSearch}</span>
+          <span className="search-timer timer" style={{ marginLeft: "auto" }}>{fmtElapsed(now - me.searching.startedAt)}</span>
+        </div>
+        <button className="search-stop-btn" disabled={busy} onClick={stop}>{t.search.stop}</button>
+      </div>
+    );
+  }
+
   return (
-    <div>
-      <button
-        className={`search-main-btn${searching ? " searching" : ""}${open ? " open" : ""}`}
-        disabled={!canSearch}
-        onClick={() => setOpen((o) => !o)}
-      >
-        <span>🔍</span>
-        {searching ? (
-          <>
-            <span>{t.search.inSearch}</span>
-            <span className="search-timer timer">{fmtElapsed(now - me.searching.startedAt)}</span>
-          </>
-        ) : (
-          <>
-            <span>{t.search.btn}</span>
-            <span style={{ fontSize: 13, color: "rgba(255,255,255,.35)", marginLeft: 2 }}>
-              {!isPool && `${t.discOpts[disc]} · `}{t.paysOpts[pays]}
-            </span>
-          </>
-        )}
-        <span className="chevron">▾</span>
-      </button>
-      {open && (
-        <div className="search-expand">
-          {!isPool && (
-            <div className="search-expand-row">
-              <span className="search-expand-lbl">{t.search.discipline}</span>
-              <div className="search-tog-g">
-                {t.discOpts.map((d, i) => (
-                  <button key={i} className={`search-tog${disc === i ? " on" : ""}`} onClick={() => setDisc(i)}>{d}</button>
-                ))}
-              </div>
-            </div>
-          )}
-          <div className="search-expand-row">
-            <span className="search-expand-lbl">{t.search.whoPays}</span>
-            <div className="search-tog-g">
-              {t.paysOpts.map((p, i) => (
-                <button key={i} className={`search-tog${pays === i ? " on" : ""}`} onClick={() => setPays(i)}>{p}</button>
-              ))}
-            </div>
+    <div className={`search-inline${!canSearch ? " disabled" : ""}`}>
+      {!isPool && (
+        <div className="search-expand-row">
+          <span className="search-expand-lbl">{t.search.discipline}</span>
+          <div className="search-tog-g">
+            {t.discOpts.map((d, i) => (
+              <button key={i} className={`search-tog${disc === i ? " on" : ""}`} onClick={() => canSearch && setDisc(i)}>{d}</button>
+            ))}
           </div>
-          {searching
-            ? <button className="search-stop-btn" disabled={busy} onClick={stop}>{t.search.stop}</button>
-            : <button className="search-go-btn" disabled={busy} onClick={start}>{t.search.start}</button>}
-          <div className="hint" style={{ padding: "10px 0 0" }}>{t.x.searchUntilMidnight}</div>
         </div>
       )}
+      <div className="search-expand-row">
+        <span className="search-expand-lbl">{t.search.whoPays}</span>
+        <div className="search-tog-g">
+          {t.paysOpts.map((p, i) => (
+            <button key={i} className={`search-tog${pays === i ? " on" : ""}`} onClick={() => canSearch && setPays(i)}>{p}</button>
+          ))}
+        </div>
+      </div>
+      <button className="search-go-btn" disabled={busy || !canSearch} onClick={start}>{t.search.start}</button>
+      <div className="hint" style={{ padding: "6px 0 0" }}>{t.x.searchUntilMidnight}</div>
     </div>
   );
 }
@@ -342,29 +324,45 @@ export function Home({ navigate }) {
           </div>
         )}
 
-        <div className="btn-stack">
+      </div>
+
+      {/* ── Поиск игры ── */}
+      <div className="card">
+        <div className="s-sect">{t.x.findGame}</div>
+        <div style={{ padding: "0 16px 16px" }}>
           <SearchBlock />
           {me.isActivated && (
-            <div className="btn-stack-row">
-              <button className="btn-tonal" onClick={() => navigate("search-list")}>👥 {t.nav.whoSearching}</button>
+            <div className="play-grid" style={{ marginTop: 8 }}>
+              <button className="play-tile" onClick={() => navigate("search-list")}>
+                <span className="play-tile-icon">👥</span>
+                <span className="play-tile-lbl">{t.nav.whoSearching}</span>
+              </button>
+              <button className="play-tile" onClick={() => navigate("apps")}>
+                <span className="play-tile-icon">📋</span>
+                <span className="play-tile-lbl">{t.nav.apps}</span>
+              </button>
               <button
-                className={`btn-tonal${me.pendingDuels > 0 ? " yellow" : ""}`}
-                style={{ position: "relative" }}
+                className={`play-tile${me.pendingDuels > 0 ? " highlight" : ""}`}
                 onClick={() => navigate("duels")}
+                style={{ position: "relative" }}
               >
-                ⚔️ {t.nav.duels}
-                {me.pendingDuels > 0 && <span className="btn-badge">{me.pendingDuels}</span>}
+                {me.pendingDuels > 0 && <span className="play-tile-badge">{me.pendingDuels}</span>}
+                <span className="play-tile-icon">⚔️</span>
+                <span className="play-tile-lbl">{t.nav.duels}</span>
+              </button>
+              <button className="play-tile" onClick={() => navigate("result")}>
+                <span className="play-tile-icon">🔎</span>
+                <span className="play-tile-lbl">{t.x.findPlayer}</span>
               </button>
             </div>
           )}
         </div>
       </div>
 
+      {/* ── Основная навигация ── */}
       <div className="card">
-        <NavRow icon="📋" iconBg="rgba(10,132,255,.15)" label={t.nav.apps} onClick={() => navigate("apps")} locked={!me.isActivated} />
         <NavRow icon="⭐" iconBg="rgba(255,214,10,.15)" label={t.nav.favorites} value={me.favoritesCount || null} onClick={() => navigate("favorites")} />
         <NavRow icon="🏆" iconBg="rgba(255,214,10,.15)" label={t.nav.rating} value={`#${me.place}`} onClick={() => navigate("rating")} />
-        <NavRow icon="✚" iconBg="rgba(48,209,88,.15)" label={t.nav.result} onClick={() => navigate("result")} locked={!me.isActivated} />
         <NavRow icon="📜" iconBg="rgba(191,90,242,.15)" label={t.nav.history} onClick={() => navigate("history")} />
         <NavRow
           icon="🏅" iconBg="rgba(255,214,10,.12)"
@@ -373,7 +371,6 @@ export function Home({ navigate }) {
           onClick={() => navigate("achievements")}
         />
         <NavRow icon="🥇" iconBg="rgba(255,159,10,.12)" label={t.nav.records} onClick={() => navigate("records")} />
-        <NavRow icon="⚙️" iconBg="rgba(99,99,102,.3)" label={t.nav.settings} onClick={() => navigate("settings")} />
         {me.role === "admin" && (
           <NavRow icon="🛡" iconBg="rgba(255,159,10,.15)" label={t.x.adminPanel.replace("🛡 ", "")} onClick={() => navigate("admin")} />
         )}
@@ -382,7 +379,9 @@ export function Home({ navigate }) {
         )}
       </div>
 
+      {/* ── Правила и настройки ── */}
       <div className="card">
+        <NavRow icon="⚙️" iconBg="rgba(99,99,102,.3)" label={t.nav.settings} onClick={() => navigate("settings")} />
         <NavRow icon="📖" iconBg="rgba(255,255,255,.08)" label={t.x.rulesBtn} onClick={() => setRules(true)} />
       </div>
 
