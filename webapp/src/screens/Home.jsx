@@ -364,10 +364,9 @@ export function Home({ navigate }) {
       </div>
 
       <div className="card">
-        <NavRow icon="📋" iconBg="rgba(10,132,255,.15)" label={t.nav.apps} onClick={() => navigate("apps")} locked={!me.isActivated} />
         <NavRow icon="⭐" iconBg="rgba(255,214,10,.15)" label={t.nav.favorites} value={me.favoritesCount || null} onClick={() => navigate("favorites")} />
         <NavRow icon="🏆" iconBg="rgba(255,214,10,.15)" label={t.nav.rating} value={`#${me.place}`} onClick={() => navigate("rating")} />
-        <NavRow icon="✚" iconBg="rgba(48,209,88,.15)" label={t.nav.result} onClick={() => navigate("result")} locked={!me.isActivated} />
+        <NavRow icon="🔎" iconBg="rgba(48,209,88,.15)" label={t.x.findPlayer} onClick={() => navigate("result")} locked={!me.isActivated} />
         <NavRow icon="📜" iconBg="rgba(191,90,242,.15)" label={t.nav.history} onClick={() => navigate("history")} />
         <NavRow
           icon="🏅" iconBg="rgba(255,214,10,.12)"
