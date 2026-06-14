@@ -635,6 +635,46 @@ body {
 .search-stop-btn:active { opacity: .72; background: rgba(255,61,84,.14); }
 .search-timer { margin-left: auto; font-variant-numeric: tabular-nums; font-size: 14px; }
 
+/* ── NAV PAIR GRID (3×2 icon tiles) ─────────────────────── */
+.nav-pair-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 0 16px;
+  margin-bottom: 12px;
+}
+.nav-pair-tile {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 7px; padding: 18px 8px 16px;
+  border-radius: var(--radius-md); border: 1px solid var(--border);
+  background: rgba(255,255,255,.03);
+  cursor: pointer; font-family: inherit; color: var(--text);
+  transition: background var(--t-fast), transform var(--t-fast);
+  position: relative;
+}
+.nav-pair-tile:active { transform: scale(.95); }
+.nav-pair-tile.locked { opacity: .28; pointer-events: none; }
+.nav-pair-icon { font-size: 26px; line-height: 1; }
+.nav-pair-lbl  { font-size: 12.5px; font-weight: 550; letter-spacing: -.01em; color: var(--text-2); text-align: center; }
+.nav-pair-badge {
+  position: absolute; top: 6px; right: 8px;
+  background: var(--red); color: #fff;
+  font-size: 10px; font-weight: 700;
+  border-radius: 8px; padding: 1px 5px; min-width: 16px; text-align: center;
+}
+.nav-pair-tile.purple { background: rgba(168,85,247,.08);  border-color: rgba(168,85,247,.2); }
+.nav-pair-tile.purple:active { background: rgba(168,85,247,.15); }
+.nav-pair-tile.gold   { background: rgba(255,186,8,.07);   border-color: rgba(255,186,8,.2); }
+.nav-pair-tile.gold:active   { background: rgba(255,186,8,.14); }
+.nav-pair-tile.yellow { background: rgba(255,214,10,.07);  border-color: rgba(255,214,10,.2); }
+.nav-pair-tile.yellow:active { background: rgba(255,214,10,.14); }
+.nav-pair-tile.green  { background: rgba(0,204,124,.07);   border-color: rgba(0,204,124,.2); }
+.nav-pair-tile.green:active  { background: rgba(0,204,124,.14); }
+.nav-pair-tile.blue   { background: rgba(59,142,255,.08);  border-color: rgba(59,142,255,.2); }
+.nav-pair-tile.blue:active   { background: rgba(59,142,255,.15); }
+.nav-pair-tile.orange { background: rgba(255,159,10,.07);  border-color: rgba(255,159,10,.2); }
+.nav-pair-tile.orange:active { background: rgba(255,159,10,.14); }
+
 /* ── MODALS ───────────────────────────────────────────────── */
 .modal-overlay {
   position: fixed; inset: 0;

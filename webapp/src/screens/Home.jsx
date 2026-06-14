@@ -363,18 +363,32 @@ export function Home({ navigate }) {
         </div>
       </div>
 
-      <div className="card">
-        <NavRow icon="⭐" iconBg="rgba(255,214,10,.15)" label={t.nav.favorites} value={me.favoritesCount || null} onClick={() => navigate("favorites")} />
-        <NavRow icon="🏆" iconBg="rgba(255,214,10,.15)" label={t.nav.rating} value={`#${me.place}`} onClick={() => navigate("rating")} />
-        <NavRow icon="🔎" iconBg="rgba(48,209,88,.15)" label={t.x.findPlayer} onClick={() => navigate("result")} locked={!me.isActivated} />
-        <NavRow icon="📜" iconBg="rgba(191,90,242,.15)" label={t.nav.history} onClick={() => navigate("history")} />
-        <NavRow
-          icon="🏅" iconBg="rgba(255,214,10,.12)"
-          label={t.nav.achievements}
-          badge={me.unseenAchievements}
-          onClick={() => navigate("achievements")}
-        />
-        <NavRow icon="🥇" iconBg="rgba(255,159,10,.12)" label={t.nav.records} onClick={() => navigate("records")} />
+      <div className="nav-pair-grid">
+        <button className="nav-pair-tile purple" onClick={() => navigate("history")}>
+          <span className="nav-pair-icon">📜</span>
+          <span className="nav-pair-lbl">{t.nav.history}</span>
+        </button>
+        <button className="nav-pair-tile gold" onClick={() => navigate("achievements")} style={{ position: "relative" }}>
+          {me.unseenAchievements > 0 && <span className="nav-pair-badge">{me.unseenAchievements}</span>}
+          <span className="nav-pair-icon">🏅</span>
+          <span className="nav-pair-lbl">{t.nav.achievements}</span>
+        </button>
+        <button className="nav-pair-tile yellow" onClick={() => navigate("favorites")}>
+          <span className="nav-pair-icon">⭐</span>
+          <span className="nav-pair-lbl">{t.nav.favorites}{me.favoritesCount > 0 ? ` · ${me.favoritesCount}` : ""}</span>
+        </button>
+        <button className={`nav-pair-tile green${!me.isActivated ? " locked" : ""}`} onClick={() => me.isActivated && navigate("result")}>
+          <span className="nav-pair-icon">🔎</span>
+          <span className="nav-pair-lbl">{t.x.findPlayer}</span>
+        </button>
+        <button className="nav-pair-tile blue" onClick={() => navigate("rating")}>
+          <span className="nav-pair-icon">🏆</span>
+          <span className="nav-pair-lbl">{t.nav.rating} <span style={{ opacity: .55, fontSize: 11 }}>#{me.place}</span></span>
+        </button>
+        <button className="nav-pair-tile orange" onClick={() => navigate("records")}>
+          <span className="nav-pair-icon">🥇</span>
+          <span className="nav-pair-lbl">{t.nav.records}</span>
+        </button>
       </div>
 
       <div className="card">
