@@ -162,11 +162,11 @@ export function Apps({ navigate }) {
                   {r.player.name}<Crown role={r.player.role} />{" "}
                   <span style={{ color: "rgba(255,255,255,.4)", fontWeight: 400, fontSize: 13 }}>{r.player.elo} {t.elo}</span>
                 </div>
-                <div className="row-meta">
-                  {t.timeOpts[r.timeSlot]} · {t.reqDiscOpts[r.disc]} · {t.paysOpts[r.pays]}
+                <div className="row-meta" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span>{t.timeOpts[r.timeSlot]} · {t.reqDiscOpts[r.disc]} · {t.paysOpts[r.pays]}</span>
+                  <RevealContact contact={r.player.contact} t={t.apps} />
                 </div>
               </div>
-              <RevealContact contact={r.player.contact} t={t.apps} />
             </div>
           ))}
         </div>
