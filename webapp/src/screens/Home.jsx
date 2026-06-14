@@ -307,7 +307,6 @@ export function Home({ navigate }) {
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
               <RankBadge elo={me.elo} />
-              {me.achPoints > 0 && <span style={{ fontSize: 12, color: "#FFD60A", background: "rgba(255,214,10,.12)", borderRadius: 8, padding: "3px 8px" }}>🏆 {me.achPoints} {t.pts}</span>}
             </div>
             <RankProgress elo={me.elo} />
             <StreakProgress streak={me.streak} />
@@ -316,6 +315,25 @@ export function Home({ navigate }) {
               {me.isCheckedIn
                 ? <span style={{ color: "#30D158" }}> · ✓ {t.x.checkinUntil} {fmtDateTime(me.checkedInUntil, lang).split(",").pop()}</span>
                 : me.isActivated && <span> · {t.x.noCheckinHint}</span>}
+            </div>
+            <div className="hero-chips">
+              <div className="hero-chip" onClick={() => { haptic("selection"); navigate("achievements"); }}>
+                <span className="hero-chip-icon">🏅</span>
+                <div className="hero-chip-body">
+                  <span className="hero-chip-val">{me.achPoints || 0} <span className="hero-chip-unit">{t.pts}</span></span>
+                  <span className="hero-chip-lbl">{t.nav.achievements}</span>
+                </div>
+                {me.unseenAchievements > 0 && <span className="notif-dot">{me.unseenAchievements}</span>}
+                <span className="hero-chip-chev">›</span>
+              </div>
+              <div className="hero-chip" onClick={() => { haptic("selection"); navigate("history"); }}>
+                <span className="hero-chip-icon">📜</span>
+                <div className="hero-chip-body">
+                  <span className="hero-chip-val">{me.matchesCount || 0}</span>
+                  <span className="hero-chip-lbl">{t.nav.history}</span>
+                </div>
+                <span className="hero-chip-chev">›</span>
+              </div>
             </div>
           </div>
         </div>
@@ -363,18 +381,15 @@ export function Home({ navigate }) {
         </div>
       </div>
 
-      <div className="card">
-        <NavRow icon="⭐" iconBg="rgba(255,214,10,.15)" label={t.nav.favorites} value={me.favoritesCount || null} onClick={() => navigate("favorites")} />
-        <NavRow icon="🏆" iconBg="rgba(255,214,10,.15)" label={t.nav.rating} value={`#${me.place}`} onClick={() => navigate("rating")} />
-        <NavRow icon="🔎" iconBg="rgba(48,209,88,.15)" label={t.x.findPlayer} onClick={() => navigate("result")} locked={!me.isActivated} />
-        <NavRow icon="📜" iconBg="rgba(191,90,242,.15)" label={t.nav.history} onClick={() => navigate("history")} />
-        <NavRow
-          icon="🏅" iconBg="rgba(255,214,10,.12)"
-          label={t.nav.achievements}
-          badge={me.unseenAchievements}
-          onClick={() => navigate("achievements")}
-        />
-        <NavRow icon="🥇" iconBg="rgba(255,159,10,.12)" label={t.nav.records} onClick={() => navigate("records")} />
+      <div className="nav-group">
+        <div className="card nav-group-card">
+          <NavRow icon="⭐" iconBg="rgba(255,214,10,.15)" label={t.nav.favorites} value={me.favoritesCount || null} onClick={() => navigate("favorites")} />
+          <NavRow icon="🔎" iconBg="rgba(48,209,88,.15)" label={t.x.findPlayer} onClick={() => navigate("result")} locked={!me.isActivated} />
+        </div>
+        <div className="card nav-group-card">
+          <NavRow icon="🏆" iconBg="rgba(255,214,10,.15)" label={t.nav.rating} value={`#${me.place}`} onClick={() => navigate("rating")} />
+          <NavRow icon="🥇" iconBg="rgba(255,159,10,.12)" label={t.nav.records} onClick={() => navigate("records")} />
+        </div>
       </div>
 
       <div className="card">

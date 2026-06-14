@@ -119,6 +119,20 @@ body {
 }
 .card:last-child { margin-bottom: 0; }
 
+/* ── NAV GROUP (3 paired cards) ──────────────────────────── */
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 10px;
+}
+.nav-group-card {
+  margin-bottom: 0;
+  border-radius: 0;
+}
+.nav-group-card:first-child { border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+.nav-group-card:last-child  { border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+
 /* ── HERO CARD ────────────────────────────────────────────── */
 .hero-card {
   background: linear-gradient(170deg, #10102a 0%, #09091a 55%, #0d0d22 100%);
@@ -147,6 +161,41 @@ body {
 .user-sub {
   font-size: 12.5px; color: var(--text-3);
   margin-top: 6px; letter-spacing: -.01em;
+}
+
+/* ── HERO CHIPS (achievements / history) ──────────────────── */
+.hero-chips {
+  display: flex; gap: 8px;
+  margin-top: 14px;
+}
+.hero-chip {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center; gap: 9px;
+  padding: 9px 10px 9px 11px; border-radius: 13px;
+  background: rgba(255,255,255,.045);
+  border: 1px solid var(--border);
+  cursor: pointer; position: relative;
+  transition: background var(--t-fast), border-color var(--t-fast);
+}
+.hero-chip:active {
+  background: rgba(255,255,255,.085);
+  border-color: rgba(255,255,255,.14);
+}
+.hero-chip-icon { font-size: 19px; line-height: 1; flex-shrink: 0; }
+.hero-chip-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.hero-chip-val {
+  font-size: 15px; font-weight: 730; color: var(--text);
+  letter-spacing: -.03em; line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+.hero-chip-unit { font-size: 11px; font-weight: 640; color: var(--gold); }
+.hero-chip-lbl {
+  font-size: 10.5px; color: var(--text-3); letter-spacing: -.005em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hero-chip-chev {
+  margin-left: auto; flex-shrink: 0;
+  color: rgba(255,255,255,.25); font-size: 18px; font-weight: 600;
 }
 
 /* ── STATS ROW ────────────────────────────────────────────── */
