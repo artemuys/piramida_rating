@@ -158,7 +158,7 @@ export default async function usersRoutes(app) {
     if (contact.length < 2) throw new ApiError(400, "validation");
     const contactType = req.body.contactType ?? "telegram";
 
-    const role = config.adminTgIds.includes(req.tgUser.id) ? "admin" : "user";
+    const role = config.adminTgIds.includes(String(req.tgUser.id)) ? "admin" : "user";
     const r = q(
       `INSERT INTO users (tg_id, role, name, contact, contact_type, lang, pref_disc, pref_pays, active_discipline, elo, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`

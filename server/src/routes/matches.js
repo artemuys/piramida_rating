@@ -91,7 +91,7 @@ export default async function matchesRoutes(app) {
   );
 
   // ── Игрок Б отвечает (зеркальное подтверждение) ────────────
-  app.post("/matches/:id/respond", { schema: respondSchema }, (req) => {
+  app.post("/matches/:id/respond", { schema: respondSchema, config: { rateLimit: { max: 20, timeWindow: "1 minute" } } }, (req) => {
     const u = requireCheckedIn(req);
     const id = Number(req.params.id);
     const claim = req.body.result;

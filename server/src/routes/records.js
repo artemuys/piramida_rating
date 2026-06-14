@@ -2,11 +2,22 @@ import { q } from "../db.js";
 import { requireUser } from "../errors.js";
 import { now } from "../util.js";
 
-function enrichAch(r) {
+function buildSeasonMap(rows) {
+  const ids = [...new Set(
+    rows.map(r => { const m = r.code.match(/^(?:p:)?season_master_(\d+)$/); return m ? Number(m[1]) : null; })
+        .filter(id => id !== null)
+  )];
+  if (!ids.length) return {};
+  const seasons = q(`SELECT id, started_at, ends_at FROM seasons WHERE id IN (${ids.map(() => "?").join(",")})`)
+    .all(...ids);
+  return Object.fromEntries(seasons.map(s => [s.id, s]));
+}
+
+function enrichAch(r, seasonMap = {}) {
   const entry = { code: r.code, earnedAt: r.earned_at, seen: r.seen };
-  const m = r.code.match(/^season_master_(\d+)$/);
+  const m = r.code.match(/^(?:p:)?season_master_(\d+)$/);
   if (m) {
-    const season = q(`SELECT started_at, ends_at FROM seasons WHERE id = ?`).get(Number(m[1]));
+    const season = seasonMap[Number(m[1])];
     if (season) { entry.seasonStartedAt = season.started_at; entry.seasonEndsAt = season.ends_at; }
   }
   return entry;
@@ -27,7 +38,8 @@ export default async function recordsRoutes(app) {
     } else {
       q(`UPDATE achievements SET seen = 1 WHERE user_id = ? AND seen = 0 AND code NOT LIKE 'p:%'`).run(u.id);
     }
-    return { achievements: rows.map(r => enrichAch(r)) };
+    const seasonMap = buildSeasonMap(rows);
+    return { achievements: rows.map(r => enrichAch(r, seasonMap)) };
   });
 
   // GET /achievements/:id — ачивки другого игрока (по дисциплине зрителя)
@@ -39,7 +51,8 @@ export default async function recordsRoutes(app) {
     const rows = isPyramid
       ? q(`SELECT code, earned_at FROM achievements WHERE user_id = ? AND code LIKE 'p:%' ORDER BY earned_at DESC`).all(id)
       : q(`SELECT code, earned_at FROM achievements WHERE user_id = ? AND code NOT LIKE 'p:%' ORDER BY earned_at DESC`).all(id);
-    return { achievements: rows.map(r => enrichAch(r)) };
+    const seasonMap = buildSeasonMap(rows);
+    return { achievements: rows.map(r => enrichAch(r, seasonMap)) };
   });
 
   // GET /records — клубные рекорды

@@ -33,13 +33,12 @@ export function levelFromXp(xp) {
   return 1;
 }
 
-// ── Выдать ачивку (идемпотентно) ────────────────────────────
+// ── Выдать ачивку (идемпотентно, атомарно) ──────────────────
 export function grantAchievement(userId, code, discipline = 'pool') {
   const fullCode = discipline === 'pyramid' ? `p:${code}` : code;
-  const existing = q(`SELECT 1 FROM achievements WHERE user_id = ? AND code = ?`).get(userId, fullCode);
-  if (existing) return false;
-  q(`INSERT INTO achievements (user_id, code, earned_at, seen) VALUES (?, ?, ?, 0)`).run(userId, fullCode, now());
-  return true;
+  const result = q(`INSERT OR IGNORE INTO achievements (user_id, code, earned_at, seen) VALUES (?, ?, ?, 0)`)
+    .run(userId, fullCode, now());
+  return result.changes > 0;
 }
 
 // ── Добавить событие в ленту ─────────────────────────────────

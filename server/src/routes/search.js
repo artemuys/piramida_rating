@@ -18,10 +18,11 @@ export default async function searchRoutes(app) {
   app.post("/search/start", { schema: startSchema }, (req) => {
     const u = requireActivated(req);
     if (!u.contact) throw new ApiError(403, "no_contact");
+    const until = endOfToday();
     q(
       `UPDATE users SET search_until = ?, search_started = ?, search_disc = ?, search_pays = ? WHERE id = ?`
-    ).run(endOfToday(), now(), req.body?.disc ?? u.pref_disc, req.body?.pays ?? u.pref_pays, u.id);
-    return { ok: true, until: endOfToday() };
+    ).run(until, now(), req.body?.disc ?? u.pref_disc, req.body?.pays ?? u.pref_pays, u.id);
+    return { ok: true, until };
   });
 
   app.post("/search/stop", (req) => {

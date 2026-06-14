@@ -87,7 +87,7 @@ export default async function requestsRoutes(app) {
        JOIN users p ON p.id = r.user_id
        WHERE r.end_day >= ? AND r.start_day <= ? AND r.user_id != ? AND p.activated_until > ?
        ORDER BY r.start_day, r.time_from,
-                CASE WHEN r.disc = 'pyramid' THEN p.elo_pyramid ELSE p.elo END DESC`
+                CASE WHEN r.disc = 1 THEN p.elo_pyramid ELSE p.elo END DESC`
     ).all(today, windowEnd, u.id, t);
     return {
       feed: rows.map((r) => ({

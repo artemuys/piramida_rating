@@ -247,9 +247,9 @@ export default async function adminRoutes(app) {
         const prefix = discipline === 'pyramid' ? 'p:' : '';
         const code = `${prefix}season_master_${seasonId}`;
         for (const u of users) {
-          const exists = q(`SELECT 1 FROM achievements WHERE user_id = ? AND code = ?`).get(u.id, code);
-          if (!exists) {
-            q(`INSERT INTO achievements (user_id, code, earned_at, seen) VALUES (?, ?, ?, 0)`).run(u.id, code, now());
+          const result = q(`INSERT OR IGNORE INTO achievements (user_id, code, earned_at, seen) VALUES (?, ?, ?, 0)`)
+            .run(u.id, code, now());
+          if (result.changes > 0) {
             q(`INSERT INTO feed (type, actor_id, target_id, data, discipline, created_at) VALUES (?, ?, ?, ?, ?, ?)`).run(
               "achievement", u.id, null, JSON.stringify({ code, name: u.name }), discipline, now()
             );
@@ -298,6 +298,7 @@ export default async function adminRoutes(app) {
     const season = q(`SELECT * FROM seasons WHERE id = ?`).get(seasonId);
     if (!season) throw new ApiError(404, "not_found");
     if (season.closed) throw new ApiError(400, "already_closed");
+    if (req.body.endsAt <= now()) throw new ApiError(400, "ends_at_must_be_future");
     q(`UPDATE seasons SET ends_at = ? WHERE id = ?`).run(req.body.endsAt, seasonId);
     audit(req.user.id, null, `season_update:${seasonId}`);
     return { ok: true };
@@ -355,9 +356,9 @@ export default async function adminRoutes(app) {
     const { userId, code } = req.body;
     const u = q(`SELECT * FROM users WHERE id = ?`).get(userId);
     if (!u) throw new ApiError(404, "player_not_found");
-    const exists = q(`SELECT 1 FROM achievements WHERE user_id = ? AND code = ?`).get(userId, code);
-    if (exists) throw new ApiError(400, "already_has");
-    q(`INSERT INTO achievements (user_id, code, earned_at, seen) VALUES (?, ?, ?, 0)`).run(userId, code, now());
+    const result = q(`INSERT OR IGNORE INTO achievements (user_id, code, earned_at, seen) VALUES (?, ?, ?, 0)`)
+      .run(userId, code, now());
+    if (result.changes === 0) throw new ApiError(400, "already_has");
     audit(req.user.id, userId, `grant_ach:${code}`);
     return { ok: true };
   });

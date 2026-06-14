@@ -9,12 +9,12 @@ export const config = {
   corsOrigin: env.CORS_ORIGIN || "http://localhost:5173",
   adminTgIds: (env.ADMIN_TG_IDS || "")
     .split(",")
-    .map((s) => Number(s.trim()))
-    .filter((n) => Number.isInteger(n) && n > 0),
+    .map((s) => s.trim())
+    .filter((s) => /^[1-9]\d*$/.test(s)), // только положительные целые (без 0 и не-цифр)
   superAdminTgIds: (env.SUPERADMIN_TG_IDS || "")
     .split(",")
-    .map((s) => Number(s.trim()))
-    .filter((n) => Number.isInteger(n) && n > 0),
+    .map((s) => s.trim())
+    .filter((s) => /^[1-9]\d*$/.test(s)),
 
   // Бизнес-константы
   ACTIVATION_MS: 45 * 24 * 60 * 60 * 1000, // 45 дней

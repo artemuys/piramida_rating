@@ -84,7 +84,7 @@ describe("authHook", () => {
   });
 
   test("ADMIN_TG_IDS парсится с фильтрацией мусора", () => {
-    assert.deepEqual(config.adminTgIds, [ADMIN_TG]);
+    assert.deepEqual(config.adminTgIds, [String(ADMIN_TG)]);
   });
 
   test("онбординг tg_id из ADMIN_TG_IDS сразу даёт роль admin", async () => {

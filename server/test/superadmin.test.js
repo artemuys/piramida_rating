@@ -66,8 +66,8 @@ describe("сезоны", () => {
     // повторное открытие — 400
     assert.equal((await asSuper("POST", "/api/admin/seasons", { durationDays: 10 })).json().error, "season_already_open");
 
-    // правка даты
-    assert.equal((await asSuper("PATCH", `/api/admin/seasons/${seasonId}`, { endsAt: 99_999_999_999 })).statusCode, 200);
+    // правка даты (endsAt должен быть в будущем)
+    assert.equal((await asSuper("PATCH", `/api/admin/seasons/${seasonId}`, { endsAt: Date.now() + 30 * 24 * 3600 * 1000 })).statusCode, 200);
 
     // закрытие
     assert.equal((await asSuper("POST", `/api/admin/seasons/${seasonId}/close`)).statusCode, 200);
