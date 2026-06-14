@@ -22,7 +22,7 @@ export const config = {
   MATCH_CONFIRM_MS: 30 * 1000,             // 30 секунд на подтверждение
   ELO_K: 32,
   ELO_START: 1000,
-  MAX_REQUESTS_PER_USER: 6,                // заявки: 3 дня × 2 слота
+  MAX_REQUESTS_PER_USER: 6,                // активных заявок-диапазонов на игрока
   MAX_FAVORITES: 50,
   RATING_TOP: 100,
   HISTORY_LIMIT: 10,

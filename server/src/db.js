@@ -42,14 +42,15 @@ CREATE INDEX IF NOT EXISTS idx_users_search ON users(search_until);
 CREATE TABLE IF NOT EXISTS requests (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  day        TEXT    NOT NULL,
-  time_slot  INTEGER NOT NULL CHECK (time_slot IN (0,1)),
+  start_day  TEXT    NOT NULL,
+  end_day    TEXT    NOT NULL,
+  time_from  TEXT    NOT NULL,
+  time_to    TEXT    NOT NULL,
   disc       INTEGER NOT NULL CHECK (disc IN (0,1)),
   pays       INTEGER NOT NULL CHECK (pays IN (0,1)),
-  created_at INTEGER NOT NULL,
-  UNIQUE (user_id, day, time_slot)
+  created_at INTEGER NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_requests_day ON requests(day);
+CREATE INDEX IF NOT EXISTS idx_requests_end ON requests(end_day);
 
 CREATE TABLE IF NOT EXISTS matches (
   id                   INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -195,6 +196,35 @@ for (const col of [
 ]) {
   try { db.exec(col); } catch { /* колонка уже есть */ }
 }
+
+// ── Миграция requests: одиночный день + слот → диапазон дат + диапазон времени ─
+try {
+  const cols = db.prepare(`PRAGMA table_info(requests)`).all().map((c) => c.name);
+  if (cols.includes("time_slot") && !cols.includes("start_day")) {
+    db.exec(`
+      CREATE TABLE requests_new (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        start_day  TEXT    NOT NULL,
+        end_day    TEXT    NOT NULL,
+        time_from  TEXT    NOT NULL,
+        time_to    TEXT    NOT NULL,
+        disc       INTEGER NOT NULL CHECK (disc IN (0,1)),
+        pays       INTEGER NOT NULL CHECK (pays IN (0,1)),
+        created_at INTEGER NOT NULL
+      );
+      INSERT INTO requests_new (id, user_id, start_day, end_day, time_from, time_to, disc, pays, created_at)
+        SELECT id, user_id, day, day,
+               CASE WHEN time_slot = 0 THEN '00:00' ELSE '17:00' END,
+               CASE WHEN time_slot = 0 THEN '17:00' ELSE '23:59' END,
+               disc, pays, created_at
+        FROM requests;
+      DROP TABLE requests;
+      ALTER TABLE requests_new RENAME TO requests;
+      CREATE INDEX IF NOT EXISTS idx_requests_end ON requests(end_day);
+    `);
+  }
+} catch { /* свежая БД уже в новой схеме */ }
 
 // Публичные ID игроков начинаются с 1000 (4 цифры — удобно диктовать у стола)
 try {

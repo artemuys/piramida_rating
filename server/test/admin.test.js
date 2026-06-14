@@ -99,7 +99,7 @@ describe("чекин / активация / деактивация", () => {
     activate(q, u.me.id);
     checkin(q, u.me.id);
     checkin(q, opp.me.id);
-    await req(app, "POST", "/api/requests", { tgId: u.tgId, body: { dayOffset: 1, timeSlot: 0, disc: 0, pays: 0 } });
+    await req(app, "POST", "/api/requests", { tgId: u.tgId, body: { startOffset: 0, endOffset: 1, timeFrom: "18:00", timeTo: "22:00", disc: 0, pays: 0 } });
     await req(app, "POST", "/api/search/start", { tgId: u.tgId, body: {} });
     const m = (await req(app, "POST", "/api/matches/report", { tgId: u.tgId, body: { opponentId: opp.me.id, result: "win" } })).json().match;
 

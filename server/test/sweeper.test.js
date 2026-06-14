@@ -12,9 +12,9 @@ describe("фоновая уборка", () => {
     const { startSweeper } = await import("../src/sweeper.js");
     const { me } = await createUser(app);
 
-    q(`INSERT INTO requests (user_id, day, time_slot, disc, pays, created_at) VALUES (?, '2000-01-01', 0, 0, 0, ?)`)
+    q(`INSERT INTO requests (user_id, start_day, end_day, time_from, time_to, disc, pays, created_at) VALUES (?, '2000-01-01', '2000-01-02', '18:00', '22:00', 0, 0, ?)`)
       .run(me.id, Date.now());
-    q(`INSERT INTO requests (user_id, day, time_slot, disc, pays, created_at) VALUES (?, '2999-01-01', 0, 0, 0, ?)`)
+    q(`INSERT INTO requests (user_id, start_day, end_day, time_from, time_to, disc, pays, created_at) VALUES (?, '2999-01-01', '2999-01-02', '18:00', '22:00', 0, 0, ?)`)
       .run(me.id, Date.now());
     q(`INSERT INTO audit_log (admin_id, target_id, action, created_at) VALUES (1, 1, 'old', ?)`)
       .run(Date.now() - 181 * 24 * 3600 * 1000);
@@ -24,7 +24,7 @@ describe("фоновая уборка", () => {
     const timer = startSweeper(silentLog); // первый прогон — синхронно внутри
     clearInterval(timer);
 
-    const days = q(`SELECT day FROM requests WHERE user_id = ?`).all(me.id).map((r) => r.day);
+    const days = q(`SELECT start_day FROM requests WHERE user_id = ?`).all(me.id).map((r) => r.start_day);
     assert.deepEqual(days, ["2999-01-01"]);
     assert.equal(q(`SELECT COUNT(*) AS c FROM audit_log WHERE action = 'old'`).get().c, 0);
     assert.equal(q(`SELECT COUNT(*) AS c FROM audit_log WHERE action = 'fresh'`).get().c, 1);

@@ -9,7 +9,7 @@ export function startSweeper(log) {
     try {
       const t = now();
       sweepExpiredMatches();
-      q(`DELETE FROM requests WHERE day < ?`).run(dayStr(0));
+      q(`DELETE FROM requests WHERE end_day < ?`).run(dayStr(0));
       q(`DELETE FROM audit_log WHERE created_at < ?`).run(t - 180 * 24 * 3600 * 1000);
       q(`DELETE FROM duels WHERE status != 'open' AND resolved_at < ?`).run(t - 30 * 24 * 3600 * 1000);
 

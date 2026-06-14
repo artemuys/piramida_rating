@@ -12,22 +12,26 @@ async function activeUser(overrides) {
 }
 
 const post = (u, body) => req(app, "POST", "/api/requests", { tgId: u.tgId, body });
+const validBody = (over = {}) => ({ startOffset: 0, endOffset: 1, timeFrom: "18:00", timeTo: "22:00", disc: 1, pays: 0, ...over });
 
 describe("создание заявок", () => {
-  test("создаётся и видна в моих заявках", async () => {
+  test("диапазон дат + диапазон времени, видна в моих заявках", async () => {
     const u = await activeUser();
-    const r = await post(u, { dayOffset: 1, timeSlot: 0, disc: 1, pays: 0 });
+    const r = await post(u, validBody({ startOffset: 0, endOffset: 6 })); // 7 дней
     assert.equal(r.statusCode, 200, r.body);
 
     const mine = (await req(app, "GET", "/api/requests/mine", { tgId: u.tgId })).json().requests;
     assert.equal(mine.length, 1);
-    assert.equal(mine[0].timeSlot, 0);
-    assert.match(mine[0].day, /^\d{4}-\d{2}-\d{2}$/);
+    assert.equal(mine[0].timeFrom, "18:00");
+    assert.equal(mine[0].timeTo, "22:00");
+    assert.match(mine[0].startDay, /^\d{4}-\d{2}-\d{2}$/);
+    assert.match(mine[0].endDay, /^\d{4}-\d{2}-\d{2}$/);
+    assert.ok(mine[0].startDay < mine[0].endDay);
   });
 
   test("без активации — 403", async () => {
     const u = await createUser(app);
-    const r = await post(u, { dayOffset: 1, timeSlot: 0, disc: 0, pays: 0 });
+    const r = await post(u, validBody());
     assert.equal(r.statusCode, 403);
     assert.equal(r.json().error, "not_activated");
   });
@@ -35,68 +39,88 @@ describe("создание заявок", () => {
   test("без контакта — 403 no_contact", async () => {
     const u = await activeUser();
     await req(app, "PATCH", "/api/me", { tgId: u.tgId, body: { contact: "" } });
-    const r = await post(u, { dayOffset: 1, timeSlot: 0, disc: 0, pays: 0 });
+    const r = await post(u, validBody());
     assert.equal(r.statusCode, 403);
     assert.equal(r.json().error, "no_contact");
   });
 
-  test("дубль (тот же день и слот) — 409", async () => {
+  test("конец раньше начала — 400 invalid_range", async () => {
     const u = await activeUser();
-    await post(u, { dayOffset: 2, timeSlot: 1, disc: 0, pays: 0 });
-    const r = await post(u, { dayOffset: 2, timeSlot: 1, disc: 1, pays: 1 });
-    assert.equal(r.statusCode, 409);
-    assert.equal(r.json().error, "duplicate_request");
+    const r = await post(u, validBody({ startOffset: 3, endOffset: 1 }));
+    assert.equal(r.statusCode, 400);
+    assert.equal(r.json().error, "invalid_range");
   });
 
-  test("лимит MAX_REQUESTS_PER_USER (3 дня × 2 слота)", async () => {
+  test("время «с» не раньше «по» — 400 invalid_time", async () => {
     const u = await activeUser();
-    for (const dayOffset of [1, 2, 3]) {
-      for (const timeSlot of [0, 1]) {
-        const r = await post(u, { dayOffset, timeSlot, disc: 0, pays: 0 });
-        assert.equal(r.statusCode, 200, r.body);
-      }
+    const r = await post(u, validBody({ timeFrom: "20:00", timeTo: "20:00" }));
+    assert.equal(r.statusCode, 400);
+    assert.equal(r.json().error, "invalid_time");
+  });
+
+  test("кривой формат времени отклоняется схемой", async () => {
+    const u = await activeUser();
+    for (const bad of ["25:00", "9:00", "18.00", "abc"]) {
+      const r = await post(u, validBody({ timeFrom: bad }));
+      assert.equal(r.statusCode, 400, `timeFrom=${bad}`);
     }
-    assert.equal(config.MAX_REQUESTS_PER_USER, 6);
-    // седьмая упрётся либо в лимит, либо в UNIQUE — лимит проверяется раньше
-    const r = await post(u, { dayOffset: 1, timeSlot: 0, disc: 0, pays: 0 });
+  });
+
+  test("offset вне 0..6 отклоняется схемой", async () => {
+    const u = await activeUser();
+    for (const body of [validBody({ startOffset: -1 }), validBody({ endOffset: 7 })]) {
+      assert.equal((await post(u, body)).statusCode, 400);
+    }
+  });
+
+  test("лимит MAX_REQUESTS_PER_USER", async () => {
+    const u = await activeUser();
+    for (let i = 0; i < config.MAX_REQUESTS_PER_USER; i++) {
+      assert.equal((await post(u, validBody())).statusCode, 200);
+    }
+    const r = await post(u, validBody());
     assert.equal(r.statusCode, 400);
     assert.equal(r.json().error, "limit_reached");
-  });
-
-  test("dayOffset вне 1..3 отклоняется схемой", async () => {
-    const u = await activeUser();
-    for (const dayOffset of [0, 4, -1]) {
-      const r = await post(u, { dayOffset, timeSlot: 0, disc: 0, pays: 0 });
-      assert.equal(r.statusCode, 400, `dayOffset=${dayOffset}`);
-    }
   });
 });
 
 describe("лента и удаление", () => {
-  test("лента не содержит моих заявок и заявок неактивированных", async () => {
+  test("лента содержит пересекающие окно чужие заявки, без своих и неактивированных", async () => {
     const me = await activeUser();
     const other = await activeUser();
     const expired = await activeUser();
 
-    await post(me, { dayOffset: 1, timeSlot: 0, disc: 0, pays: 0 });
-    await post(other, { dayOffset: 1, timeSlot: 0, disc: 1, pays: 1 });
-    await post(expired, { dayOffset: 1, timeSlot: 1, disc: 0, pays: 0 });
-    q(`UPDATE users SET activated_until = 0 WHERE id = ?`).run(expired.me.id); // активация истекла после подачи
+    await post(me, validBody());
+    await post(other, validBody({ startOffset: 0, endOffset: 2 }));
+    await post(expired, validBody({ startOffset: 1, endOffset: 1 }));
+    q(`UPDATE users SET activated_until = 0 WHERE id = ?`).run(expired.me.id);
 
-    const { feed, days } = (await req(app, "GET", "/api/requests/feed", { tgId: me.tgId })).json();
-    assert.equal(days.length, 3);
+    const { feed } = (await req(app, "GET", "/api/requests/feed", { tgId: me.tgId })).json();
     const ids = feed.map((f) => f.player.id);
     assert.ok(ids.includes(other.me.id));
     assert.ok(!ids.includes(me.me.id), "своя заявка в ленте");
     assert.ok(!ids.includes(expired.me.id), "заявка неактивированного в ленте");
-    // активированный зритель видит контакт
-    assert.equal(feed.find((f) => f.player.id === other.me.id).player.contact, "@test");
+
+    const row = feed.find((f) => f.player.id === other.me.id);
+    assert.equal(row.player.contact, "@test");
+    assert.equal(row.timeFrom, "18:00");
+    assert.ok(row.startDay && row.endDay);
+  });
+
+  test("заявка целиком в прошлом в ленту не попадает", async () => {
+    const me = await activeUser();
+    const other = await activeUser();
+    const id = (await post(other, validBody())).json().id;
+    // сдвигаем диапазон во вчера
+    q(`UPDATE requests SET start_day = '2000-01-01', end_day = '2000-01-02' WHERE id = ?`).run(id);
+    const { feed } = (await req(app, "GET", "/api/requests/feed", { tgId: me.tgId })).json();
+    assert.ok(!feed.some((f) => f.id === id));
   });
 
   test("удаление своей заявки; чужую удалить нельзя", async () => {
     const a = await activeUser();
     const b = await activeUser();
-    const id = (await post(a, { dayOffset: 3, timeSlot: 0, disc: 0, pays: 0 })).json().id;
+    const id = (await post(a, validBody())).json().id;
 
     await req(app, "DELETE", `/api/requests/${id}`, { tgId: b.tgId }); // чужая — тихий no-op
     assert.equal((await req(app, "GET", "/api/requests/mine", { tgId: a.tgId })).json().requests.length, 1);

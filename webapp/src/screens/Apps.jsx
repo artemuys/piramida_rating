@@ -5,24 +5,45 @@ import { Ava, Crown, Spinner, RevealContact } from "../components.jsx";
 import { fmtDayLabel } from "../util.js";
 import { haptic } from "../telegram.js";
 
+const WINDOW_DAYS = 7; // на сколько дней вперёд можно подать заявку (0 = сегодня)
+
+function offsetDay(offset) {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** «Сегодня» / «Сегодня — 14 фев» — компактная подпись диапазона дат. */
+function dateRangeLabel(startDay, endDay, t, lang) {
+  const a = fmtDayLabel(startDay, t, lang);
+  if (startDay === endDay) return a;
+  return `${a} — ${fmtDayLabel(endDay, t, lang)}`;
+}
+
 function NewRequestForm({ onDone, onCancel }) {
   const { me, t, toastError } = useApp();
-  const [dayOffset, setDayOffset] = useState(1);
-  const [timeSlot, setTimeSlot] = useState(0);
+  const [startOffset, setStartOffset] = useState(0);
+  const [endOffset, setEndOffset] = useState(0);
+  const [timeFrom, setTimeFrom] = useState("18:00");
+  const [timeTo, setTimeTo] = useState("22:00");
   const isPool = me.activeDiscipline !== 'pyramid';
-  // В пуле дисциплина фиксирована (American=0), в пирамиде — выбор как раньше
   const [disc, setDisc] = useState(isPool ? 0 : (me.prefDisc === 2 ? 1 : me.prefDisc));
   const [pays, setPays] = useState(me.prefPays);
   const [busy, setBusy] = useState(false);
 
-  const DAY_OFFSETS = [1, 2, 3];
-  const dayLabels = [t.apps.tomorrow, fmtDayLabel(offsetDay(2), t, me.lang), fmtDayLabel(offsetDay(3), t, me.lang)];
+  const offsets = Array.from({ length: WINDOW_DAYS }, (_, i) => i);
+  const timeValid = timeFrom < timeTo;
+
+  function pickStart(off) {
+    setStartOffset(off);
+    if (endOffset < off) setEndOffset(off); // конец не раньше начала
+  }
 
   async function create() {
-    if (busy) return;
+    if (busy || !timeValid) return;
     setBusy(true);
     try {
-      await api.post("/requests", { dayOffset, timeSlot, disc, pays });
+      await api.post("/requests", { startOffset, endOffset, timeFrom, timeTo, disc, pays });
       haptic("ok");
       onDone();
     } catch (e) {
@@ -34,22 +55,45 @@ function NewRequestForm({ onDone, onCancel }) {
   return (
     <div style={{ borderTop: "1px solid rgba(255,255,255,.08)" }}>
       <div className="s-sect" style={{ paddingTop: 12 }}>{t.apps.newTitle}</div>
+
       <div className="tog-wrap">
-        <div className="tog-lbl">{t.apps.day}</div>
-        <div className="tog-g">
-          {dayLabels.map((label, i) => (
-            <button key={i} className={`tog${dayOffset === DAY_OFFSETS[i] ? " on" : ""}`} onClick={() => setDayOffset(DAY_OFFSETS[i])}>{label}</button>
+        <div className="tog-lbl">{t.apps.startDay}</div>
+        <div className="tog-g" style={{ flexWrap: "wrap" }}>
+          {offsets.map((off) => (
+            <button key={off} className={`tog${startOffset === off ? " on" : ""}`} onClick={() => pickStart(off)}>
+              {fmtDayLabel(offsetDay(off), t, me.lang)}
+            </button>
           ))}
         </div>
       </div>
+
       <div className="tog-wrap">
-        <div className="tog-lbl">{t.apps.time}</div>
-        <div className="tog-g">
-          {t.timeOpts.map((tv, i) => (
-            <button key={i} className={`tog${timeSlot === i ? " on" : ""}`} onClick={() => setTimeSlot(i)}>{tv}</button>
+        <div className="tog-lbl">{t.apps.endDay}</div>
+        <div className="tog-g" style={{ flexWrap: "wrap" }}>
+          {offsets.map((off) => (
+            <button
+              key={off}
+              className={`tog${endOffset === off ? " on" : ""}`}
+              disabled={off < startOffset}
+              style={off < startOffset ? { opacity: 0.3, cursor: "not-allowed" } : {}}
+              onClick={() => off >= startOffset && setEndOffset(off)}
+            >
+              {fmtDayLabel(offsetDay(off), t, me.lang)}
+            </button>
           ))}
         </div>
       </div>
+
+      <div className="tog-wrap">
+        <div className="tog-lbl">{t.apps.availability}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 14, color: "rgba(255,255,255,.5)" }}>{t.apps.from}</span>
+          <input className="s-inp" type="time" value={timeFrom} onChange={(e) => setTimeFrom(e.target.value)} style={{ width: "auto" }} />
+          <span style={{ fontSize: 14, color: "rgba(255,255,255,.5)" }}>{t.apps.to}</span>
+          <input className="s-inp" type="time" value={timeTo} onChange={(e) => setTimeTo(e.target.value)} style={{ width: "auto" }} />
+        </div>
+      </div>
+
       {!isPool && (
         <div className="tog-wrap">
           <div className="tog-lbl">{t.apps.disc}</div>
@@ -69,17 +113,11 @@ function NewRequestForm({ onDone, onCancel }) {
         </div>
       </div>
       <div className="btn-stack">
-        <button className="btn-primary green" disabled={busy} onClick={create}>{t.apps.create}</button>
+        <button className="btn-primary green" disabled={busy || !timeValid} onClick={create}>{t.apps.create}</button>
         <button className="btn-tonal" onClick={onCancel}>{t.apps.cancel}</button>
       </div>
     </div>
   );
-}
-
-function offsetDay(offset) {
-  const d = new Date();
-  d.setDate(d.getDate() + offset);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 export function Apps({ navigate }) {
@@ -111,12 +149,6 @@ export function Apps({ navigate }) {
 
   if (mine === null || feed === null) return <Spinner />;
 
-  const byDay = new Map();
-  for (const r of feed) {
-    if (!byDay.has(r.day)) byDay.set(r.day, []);
-    byDay.get(r.day).push(r);
-  }
-
   return (
     <>
       <div className="card">
@@ -127,9 +159,9 @@ export function Apps({ navigate }) {
         {mine.map((a) => (
           <div key={a.id} style={{ display: "flex", alignItems: "center", padding: "11px 20px", borderBottom: "1px solid rgba(255,255,255,.08)" }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 16, fontWeight: 500, letterSpacing: "-.01em" }}>{fmtDayLabel(a.day, t, me.lang)}</div>
+              <div style={{ fontSize: 16, fontWeight: 500, letterSpacing: "-.01em" }}>{dateRangeLabel(a.startDay, a.endDay, t, me.lang)}</div>
               <div style={{ fontSize: 13, color: "rgba(255,255,255,.45)", marginTop: 2 }}>
-                {t.timeOpts[a.timeSlot]} · {t.reqDiscOpts[a.disc]} · {t.paysOpts[a.pays]}
+                {a.timeFrom}–{a.timeTo} · {t.reqDiscOpts[a.disc]} · {t.paysOpts[a.pays]}
               </div>
             </div>
             <button
@@ -151,10 +183,10 @@ export function Apps({ navigate }) {
 
       {feed.length === 0 && <div className="hint" style={{ paddingBottom: 8 }}>{t.apps.emptyFeed}</div>}
 
-      {[...byDay.entries()].map(([day, items]) => (
-        <div className="card" key={day}>
-          <div className="s-sect">{fmtDayLabel(day, t, me.lang)}</div>
-          {items.map((r) => (
+      {feed.length > 0 && (
+        <div className="card">
+          <div className="s-sect">{t.nav.whoSearching}</div>
+          {feed.map((r) => (
             <div className="row" key={r.id} style={{ cursor: "pointer" }} onClick={() => navigate("player", { playerId: r.player.id, title: r.player.name })}>
               <Ava id={r.player.id} name={r.player.name} />
               <div className="row-info">
@@ -163,14 +195,14 @@ export function Apps({ navigate }) {
                   <span style={{ color: "rgba(255,255,255,.4)", fontWeight: 400, fontSize: 13 }}>{r.player.elo} {t.elo}</span>
                 </div>
                 <div className="row-meta" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                  <span>{t.timeOpts[r.timeSlot]} · {t.reqDiscOpts[r.disc]} · {t.paysOpts[r.pays]}</span>
+                  <span>{dateRangeLabel(r.startDay, r.endDay, t, me.lang)} · {r.timeFrom}–{r.timeTo} · {t.reqDiscOpts[r.disc]} · {t.paysOpts[r.pays]}</span>
                   <RevealContact contact={r.player.contact} t={t.apps} />
                 </div>
               </div>
             </div>
           ))}
         </div>
-      ))}
+      )}
     </>
   );
 }

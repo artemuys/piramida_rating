@@ -3,31 +3,45 @@ import { config } from "../config.js";
 import { ApiError, requireActivated } from "../errors.js";
 import { now, dayStr } from "../util.js";
 
+const WINDOW_DAYS = 7; // заявку можно подать на любой из ближайших 7 дней (0 = сегодня)
+const TIME_RE = "^([01][0-9]|2[0-3]):[0-5][0-9]$"; // HH:MM 24ч
+
 const createSchema = {
   body: {
     type: "object",
-    required: ["dayOffset", "timeSlot", "disc", "pays"],
+    required: ["startOffset", "endOffset", "timeFrom", "timeTo", "disc", "pays"],
     additionalProperties: false,
     properties: {
-      dayOffset: { type: "integer", minimum: 1, maximum: 3 },
-      timeSlot: { type: "integer", minimum: 0, maximum: 1 },
+      startOffset: { type: "integer", minimum: 0, maximum: WINDOW_DAYS - 1 },
+      endOffset: { type: "integer", minimum: 0, maximum: WINDOW_DAYS - 1 },
+      timeFrom: { type: "string", pattern: TIME_RE },
+      timeTo: { type: "string", pattern: TIME_RE },
       disc: { type: "integer", minimum: 0, maximum: 1 },
       pays: { type: "integer", minimum: 0, maximum: 1 },
     },
   },
 };
 
+function serializeRequest(r) {
+  return {
+    id: r.id,
+    startDay: r.start_day,
+    endDay: r.end_day,
+    timeFrom: r.time_from,
+    timeTo: r.time_to,
+    disc: r.disc,
+    pays: r.pays,
+  };
+}
+
 export default async function requestsRoutes(app) {
   app.get("/requests/mine", (req) => {
     const u = requireActivated(req);
+    // активные = ещё не прошедшие (конец диапазона сегодня или позже)
     const rows = q(
-      `SELECT * FROM requests WHERE user_id = ? AND day >= ? ORDER BY day, time_slot`
+      `SELECT * FROM requests WHERE user_id = ? AND end_day >= ? ORDER BY start_day, time_from`
     ).all(u.id, dayStr(0));
-    return {
-      requests: rows.map((r) => ({
-        id: r.id, day: r.day, timeSlot: r.time_slot, disc: r.disc, pays: r.pays,
-      })),
-    };
+    return { requests: rows.map(serializeRequest) };
   });
 
   app.post(
@@ -36,21 +50,20 @@ export default async function requestsRoutes(app) {
     (req) => {
       const u = requireActivated(req);
       if (!u.contact) throw new ApiError(403, "no_contact");
-      const { dayOffset, timeSlot, disc, pays } = req.body;
+      const { startOffset, endOffset, timeFrom, timeTo, disc, pays } = req.body;
 
-      const count = q(`SELECT COUNT(*) AS c FROM requests WHERE user_id = ? AND day >= ?`)
+      if (endOffset < startOffset) throw new ApiError(400, "invalid_range");
+      if (timeFrom >= timeTo) throw new ApiError(400, "invalid_time"); // HH:MM сравнимы лексикографически
+
+      const count = q(`SELECT COUNT(*) AS c FROM requests WHERE user_id = ? AND end_day >= ?`)
         .get(u.id, dayStr(0)).c;
       if (count >= config.MAX_REQUESTS_PER_USER) throw new ApiError(400, "limit_reached");
 
-      try {
-        const r = q(
-          `INSERT INTO requests (user_id, day, time_slot, disc, pays, created_at) VALUES (?, ?, ?, ?, ?, ?)`
-        ).run(u.id, dayStr(dayOffset), timeSlot, disc, pays, now());
-        return { id: Number(r.lastInsertRowid) };
-      } catch (e) {
-        if (String(e.message).includes("UNIQUE")) throw new ApiError(409, "duplicate_request");
-        throw e;
-      }
+      const r = q(
+        `INSERT INTO requests (user_id, start_day, end_day, time_from, time_to, disc, pays, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run(u.id, dayStr(startOffset), dayStr(endOffset), timeFrom, timeTo, disc, pays, now());
+      return { id: Number(r.lastInsertRowid) };
     }
   );
 
@@ -60,26 +73,25 @@ export default async function requestsRoutes(app) {
     return { ok: true };
   });
 
-  // Лента чужих заявок на 3 дня. Контакты — только активированным (requireActivated).
+  // Лента чужих заявок, пересекающихся с окном ближайших 7 дней.
+  // Контакты — только активированным (requireActivated).
   app.get("/requests/feed", (req) => {
     const u = requireActivated(req);
     const t = now();
-    // Окно — 3 заигрываемых дня (dayOffset 1..3 по схеме создания). Сегодня (0)
-    // заявку подать нельзя, поэтому в фид не включаем.
-    const days = [dayStr(1), dayStr(2), dayStr(3)];
+    const today = dayStr(0);
+    const windowEnd = dayStr(WINDOW_DAYS - 1);
     const rows = q(
-      `SELECT r.id, r.day, r.time_slot, r.disc, r.pays,
+      `SELECT r.id, r.start_day, r.end_day, r.time_from, r.time_to, r.disc, r.pays,
               p.id AS p_id, p.name, p.elo, p.elo_pyramid, p.role, p.contact
        FROM requests r
        JOIN users p ON p.id = r.user_id
-       WHERE r.day IN (?, ?, ?) AND r.user_id != ? AND p.activated_until > ?
-       ORDER BY r.day, r.time_slot,
+       WHERE r.end_day >= ? AND r.start_day <= ? AND r.user_id != ? AND p.activated_until > ?
+       ORDER BY r.start_day, r.time_from,
                 CASE WHEN r.disc = 'pyramid' THEN p.elo_pyramid ELSE p.elo END DESC`
-    ).all(days[0], days[1], days[2], u.id, t);
+    ).all(today, windowEnd, u.id, t);
     return {
-      days,
       feed: rows.map((r) => ({
-        id: r.id, day: r.day, timeSlot: r.time_slot, disc: r.disc, pays: r.pays,
+        ...serializeRequest(r),
         player: {
           id: r.p_id, name: r.name,
           elo: r.disc === 'pyramid' ? r.elo_pyramid : r.elo,
