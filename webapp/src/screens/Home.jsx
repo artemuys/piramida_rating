@@ -345,8 +345,11 @@ export function Home({ navigate }) {
         <div className="btn-stack">
           <SearchBlock />
           {me.isActivated && (
-            <div className="btn-stack-row">
-              <button className="btn-tonal" onClick={() => navigate("search-list")}>👥 {t.nav.whoSearching}</button>
+            <>
+              <div className="btn-stack-row">
+                <button className="btn-tonal" onClick={() => navigate("search-list")}>👥 {t.nav.whoSearching}</button>
+                <button className="btn-tonal" onClick={() => navigate("apps")}>📋 {t.nav.apps}</button>
+              </div>
               <button
                 className={`btn-tonal${me.pendingDuels > 0 ? " yellow" : ""}`}
                 style={{ position: "relative" }}
@@ -355,7 +358,7 @@ export function Home({ navigate }) {
                 ⚔️ {t.nav.duels}
                 {me.pendingDuels > 0 && <span className="btn-badge">{me.pendingDuels}</span>}
               </button>
-            </div>
+            </>
           )}
         </div>
       </div>
