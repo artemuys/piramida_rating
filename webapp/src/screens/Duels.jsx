@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api.js";
 import { useApp } from "../store.jsx";
-import { Ava, Spinner, Empty, ContactLink } from "../components.jsx";
+import { Ava, Spinner, Empty, ContactLink, RevealContact } from "../components.jsx";
 import { haptic } from "../telegram.js";
 
 export function Duels({ navigate }) {

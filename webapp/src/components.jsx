@@ -5,6 +5,26 @@ import { useApp } from "./store.jsx";
 import { avaColor, initials, winPct, rankOf, RANKS, xpProgress, levelFromXp, xpToReachLevel } from "./util.js";
 import { tg } from "./telegram.js";
 
+export function RevealContact({ contact, t, style }) {
+  const [revealed, setRevealed] = useState(false);
+  if (!contact) return null;
+  if (!revealed) {
+    return (
+      <button
+        onClick={(e) => { e.stopPropagation(); setRevealed(true); }}
+        style={{
+          background: "rgba(10,132,255,.15)", border: "none", borderRadius: 6,
+          color: "#0A84FF", fontSize: 12, padding: "3px 8px", cursor: "pointer",
+          fontFamily: "inherit", whiteSpace: "nowrap", flexShrink: 0, ...style,
+        }}
+      >
+        {t?.showContact ?? "Показать"}
+      </button>
+    );
+  }
+  return <ContactLink contact={contact} style={{ fontSize: 13, flexShrink: 0, ...style }} />;
+}
+
 // Renders a contact as a clickable link (Telegram) or copyable phone number.
 export function ContactLink({ contact, style, className }) {
   if (!contact) return null;

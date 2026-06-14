@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api.js";
 import { useApp } from "../store.jsx";
-import { Ava, Crown, Spinner, ContactLink } from "../components.jsx";
+import { Ava, Crown, Spinner, RevealContact } from "../components.jsx";
 import { fmtDayLabel } from "../util.js";
 import { haptic } from "../telegram.js";
 
@@ -166,7 +166,7 @@ export function Apps({ navigate }) {
                   {t.timeOpts[r.timeSlot]} · {t.reqDiscOpts[r.disc]} · {t.paysOpts[r.pays]}
                 </div>
               </div>
-              <ContactLink contact={r.player.contact} style={{ fontSize: 13, maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }} />
+              <RevealContact contact={r.player.contact} t={t.apps} />
             </div>
           ))}
         </div>

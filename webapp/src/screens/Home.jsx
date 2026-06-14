@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { useApp } from "../store.jsx";
-import { Ava, Crown, RulesModal, Spinner, Stats, Empty, RankBadge, RankProgress, LevelBar, StreakBadge, StreakProgress, FeedSkeleton, ContactLink } from "../components.jsx";
+import { Ava, Crown, RulesModal, Spinner, Stats, Empty, RankBadge, RankProgress, LevelBar, StreakBadge, StreakProgress, FeedSkeleton, RevealContact } from "../components.jsx";
 import { useNow, fmtElapsed, fmtDateTime, fmtAgo } from "../util.js";
 import { haptic } from "../telegram.js";
 import { getAchMeta } from "./Achievements.jsx";
@@ -418,7 +418,7 @@ export function SearchListScreen({ navigate }) {
             <div className="row-name">{p.name}<Crown role={p.role} /></div>
             <div className="row-meta">{p.elo} {t.elo} · {t.discOpts[p.disc]} · {t.paysOpts[p.pays]}</div>
           </div>
-          <ContactLink contact={p.contact} style={{ fontSize: 13 }} />
+          <RevealContact contact={p.contact} t={t.apps} />
         </div>
       ))}
     </div>
