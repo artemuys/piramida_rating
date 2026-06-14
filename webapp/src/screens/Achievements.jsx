@@ -95,9 +95,12 @@ export function Achievements({ playerId }) {
 
   if (!achs) return <Spinner />;
 
-  const earned = new Map(achs.map(a => [a.code, a.earnedAt]));
+  // Ачивки дисциплины «пирамида» приходят с префиксом 'p:' — снимаем его,
+  // чтобы сопоставлять с ключами ACH_META (они без префикса).
+  const strip = (c) => (c.startsWith("p:") ? c.slice(2) : c);
+  const earned = new Map(achs.map(a => [strip(a.code), a.earnedAt]));
   const allCodes = Object.keys(ACH_META);
-  const extraEarned = achs.filter(a => !ACH_META[a.code] && /^season_master_\d+$/.test(a.code)).map(a => a.code);
+  const extraEarned = achs.map(a => strip(a.code)).filter(c => !ACH_META[c] && /^season_master_\d+$/.test(c));
   const earnedList = [...allCodes.filter(c => earned.has(c)), ...extraEarned];
   const lockedList = allCodes.filter(c => !earned.has(c));
 
@@ -126,7 +129,7 @@ export function Achievements({ playerId }) {
             <div className="s-sect" style={{ color: "#FFD60A" }}>{ta.earnedSection} {earnedList.length}</div>
             <div className="ach-grid">
               {earnedList.map(code => {
-                const a = achs.find(x => x.code === code);
+                const a = achs.find(x => strip(x.code) === code);
                 return <AchCard key={code} code={code} earnedAt={earned.get(code)} seasonStartedAt={a?.seasonStartedAt} seasonEndsAt={a?.seasonEndsAt} t={t} lang={lang} />;
               })}
             </div>
